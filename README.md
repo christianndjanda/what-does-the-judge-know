@@ -16,16 +16,50 @@ src/judgeprobe/
   judge.py        Judge: verdict production + residual-stream capture from one model
   probes.py       mass-mean probe (primary), logistic (secondary), layer sweep, LOO
   store.py        incremental on-disk activation cache (streaming, resumable)
+  harness.py      the corpus loop: judge -> store, resumable, verdict metrics
 scripts/
   check_env.py                 environment check -- run this first on the GH200
   phase0_build_transcripts.py  Phase 0.1: ten throwaway transcripts
   phase0_gates.py              Phase 0.2-0.4: Gates A, B, C
   diagnose_position_bias.py    why does the judge prefer the first option?
+  phase1_selftest.py           Phase 1: harness contracts, on CPU
+  phase1_harness.py            Phase 1: run the harness over a transcript corpus
   setup_lambda.sh              bootstrap a Lambda Labs GPU instance
 ```
 
 Outputs land in `data/phase0/` (gitignored): `transcripts.jsonl`, `verdicts.json`,
 `activations.npz`, `gate_report.json`.
+
+## Running Phase 1
+
+The harness is what every later phase's forward passes go through. Check it on CPU
+first -- a 135M model exercises the same code paths as the 32B one:
+
+```bash
+python scripts/phase1_selftest.py       # 24 contract checks, no GPU, ~1 minute
+```
+
+Then run it over a corpus:
+
+```bash
+python scripts/phase1_harness.py --model <hf-id>                    # full debates only
+python scripts/phase1_harness.py --model <hf-id> --rounds 1,2,full  # Phase 5 truncations
+python scripts/phase1_harness.py --summary-only --out data/phase1/acts   # no GPU
+```
+
+It streams one `.npy` per (round, presentation order, class) into an
+`ActivationStore` and flushes the manifest after every debate, so a killed run
+resumes where it stopped. `--stride N` caches every Nth layer; the final layer is
+always kept. Verdict metrics -- parse rate, order consistency, accuracy, mean
+P(gold) -- are recomputed from the manifest by `--summary-only`, so Q0 can be
+watched while a corpus is still being built.
+
+| contract | what it checks |
+| --- | --- |
+| C1 | verdict and activations come from one model, under one options layout |
+| C2 | layer stride keeps every Nth layer and never drops the last |
+| C3 | truncation through round *k* is a real prefix of the debate |
+| C4 | activations stream to disk, round-trip exactly, and a rerun resumes |
 
 ## Running Phase 0 on Lambda Labs
 

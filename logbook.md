@@ -648,3 +648,52 @@ Three notes on the fixes:
 Phase 0's gates were left on the in-memory path deliberately; ten transcripts do not
 need streaming, and rewriting working gate code the day before Phase 2 is not a good
 trade.
+
+### The harness had no runner, and a stride bug waiting in the layer sweep
+
+The four Phase 1 deliverables existed as library code with **no caller**. Nothing in
+the repo used `Judge.evaluate` or `ActivationStore`, so "done" meant "importable",
+not "exercised". Closed that: the pieces are now a pipeline with a test.
+
+**`judgeprobe/harness.py`** is the loop Phases 2-5 all go through: read transcripts,
+`evaluate` each, stream the arrays to a store, flush the manifest per debate. Two
+choices worth recording.
+
+- *Verdicts live in the store manifest*, not a side file. So `summarise()` recomputes
+  the Q0 numbers from a half-finished run with no GPU (`--summary-only`). Phase 2's
+  stop condition is "watch the steering rate and rescope if it is too low" -- that
+  needs the rate mid-run, not after.
+- *The verdict is always taken on the full transcript*, even when truncated
+  activations are captured. A verdict on a truncated debate would be a different
+  experiment.
+
+**`Judge.evaluate(through_rounds=...)`** captures the Phase 5 truncations. It
+collapses a cutoff that lands past the last round: `(1, 2, None)` on a 2-round debate
+is `["r1", "full"]`, not three capture points with two identical. Phase 2 mixes 2-
+and 3-round debates, so without that every short debate would pay ~4 needless forward
+passes -- and, worse, the duplicate would enter Phase 5's trajectory plot as an
+independent point.
+
+**A real bug found while writing the self-test.** `sweep_layers` numbers its rows
+0..n-1 over whatever was cached. That is the model's layer index only at stride 1.
+Under the doc's own suggestion -- "cache every 4th layer" -- row 3 is model layer 12,
+and every layer number in the writeup would have been off by a factor of four. Phase
+0 never hit it because it swept all 64 layers. Fixed with `probes.label_layers`,
+which applies the mapping the store manifest already records.
+
+**`scripts/phase1_selftest.py`** checks 24 contracts on SmolLM2-135M on CPU: 24/24
+pass in about a minute. Its point is that it needs no GPU. Every code path the 32B
+run takes -- chat template, hooks, stride, truncation, store round-trip, resume -- is
+exercised for free on the dev box, so plumbing bugs cost seconds instead of GH200
+hours. It asserts nothing about the judge; a 135M model's verdicts are noise (order
+consistency 0.0, mean P(gold) 0.499, first-slot rate 1.0 -- it answers "A" every
+time, which is exactly what a model too small to read the prompt should do).
+
+End-to-end on the ten Phase 0 transcripts, stride 4, rounds `1,2,full`: 10 debates,
+80 arrays, 1.7 MB, 100s on CPU. Reloading the store and fitting the probe sweep gives
+best model layer 20 at LOO 0.60 -- the same at-chance number the corrected Gate C
+reported, from a different code path, which is the read-path check that matters.
+
+Sizing for the real thing at stride 4 on Qwen2.5-32B: 17 of 64 layers, so 0.35 MB
+per array and 2.8 MB (2-round) to 4.2 MB (3-round) per debate at `1,2,full` -- about
+2 GB across 600 debates, against ~9 GB at stride 1.

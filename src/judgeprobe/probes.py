@@ -143,6 +143,21 @@ def sweep_layers(pos: np.ndarray, neg: np.ndarray, *, fit=fit_mass_mean,
     return rows
 
 
+def label_layers(rows: list[dict], layers: list[int] | None) -> list[dict]:
+    """Attach the model layer each swept row actually came from.
+
+    `sweep_layers` numbers its rows 0..n-1 over whatever was cached, which is only
+    the model's layer index at stride 1. Under `Judge(layer_stride=4)` row 3 is
+    model layer 12, so reporting the sweep's own index would mislocate every result
+    in the writeup. The store manifest records the mapping; this applies it.
+    """
+    if not layers:
+        return rows
+    if len(layers) != len(rows):
+        raise ValueError(f"{len(rows)} swept rows but {len(layers)} cached layers")
+    return [r | {"model_layer": int(layers[r["layer"]])} for r in rows]
+
+
 def best_layer(rows: list[dict], key: str = "loo_acc") -> dict:
     return max(rows, key=lambda r: (r.get(key, r["train_acc"]), r["train_acc"]))
 

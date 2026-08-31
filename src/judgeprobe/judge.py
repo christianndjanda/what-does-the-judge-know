@@ -210,22 +210,41 @@ def resolve_dtype(device: str) -> torch.dtype:
     return torch.float16 if device.startswith("cuda") else torch.float32
 
 
+def round_key(through_round: int | None) -> str:
+    """Store key for one truncation: `"r1"`, `"r2"`, ..., or `"full"`."""
+    return "full" if through_round is None else "r" + str(int(through_round))
+
+
 @dataclass
 class JudgeOutput:
-    """One debate's verdict and activations, produced by a single Judge."""
+    """One debate's verdict and activations, produced by a single Judge.
+
+    `activations` is keyed `[round][order][class]`. Phase 5 needs the same contrast
+    pair against the transcript truncated through each round, and holding every
+    array a debate produces on one object keeps them provably from one model.
+    """
 
     transcript_id: str
     verdict: CounterbalancedVerdict
-    activations: dict  # {"forward"|"reverse": {"gold"|"distractor": (n_layers, d)}}
+    activations: dict  # {round_key: {"forward"|"reverse": {"gold"|"distractor": arr}}}
+    round_keys: list[str]  # captured truncations, in the order requested
     layers: list[int]  # which model layers the rows correspond to
     model_id: str
 
-    def order_averaged(self) -> dict:
+    def order_averaged(self, round_key: str = "full") -> dict:
         """`{"gold": ..., "distractor": ...}` averaged over presentation order."""
-        import numpy as np
-        return {cls: (self.activations["forward"][cls]
-                      + self.activations["reverse"][cls]) / 2
+        acts = self.activations[round_key]
+        return {cls: (acts["forward"][cls] + acts["reverse"][cls]) / 2
                 for cls in ("gold", "distractor")}
+
+    def to_arrays(self) -> dict[str, np.ndarray]:
+        """Flat `{"<round>__<order>__<class>": (n_layers, d_model)}` for the store."""
+        return {
+            f"{rk}__{order}__{cls}": arr
+            for rk, orders in self.activations.items()
+            for order, classes in orders.items()
+            for cls, arr in classes.items()
+        }
 
 
 class Judge:
@@ -432,7 +451,27 @@ class Judge:
             "reverse": self.contrast_activations(transcript, swap=True, **kw),
         }
 
-    def evaluate(self, transcript: Transcript, **kw) -> "JudgeOutput":
+    def truncations(self, transcript: Transcript,
+                    through_rounds) -> list[int | None]:
+        """The distinct effective cutoffs for this transcript, in request order.
+
+        A cutoff at or past the last round renders the whole debate, so asking for
+        `(1, 2, None)` on a two-round transcript is two capture points, not three.
+        Phase 2 mixes 2- and 3-round debates; without this every short one would pay
+        for a duplicate of the full transcript.
+        """
+        out: list[int | None] = []
+        seen: set[int | None] = set()
+        for k in through_rounds:
+            eff = None if k is None or int(k) >= transcript.n_rounds else int(k)
+            if eff in seen:
+                continue
+            seen.add(eff)
+            out.append(eff)
+        return out
+
+    def evaluate(self, transcript: Transcript, *, through_rounds=(None,),
+                 **kw) -> "JudgeOutput":
         """Verdict and contrast activations for one debate, from one model.
 
         The design doc calls this coupling non-negotiable: the knows-versus-says gap
@@ -445,11 +484,25 @@ class Judge:
         verdict: the contrast-pair method appends a different answer to each prompt,
         so a single pass cannot produce both. Same model instance, same weights, same
         options layout -- which is what the requirement is protecting.
+
+        `through_rounds` lists the truncations to capture (`None` = the whole
+        debate); Phase 5 passes `(1, 2, None)`. The verdict is always taken on the
+        full transcript -- a verdict on a truncated debate would be a different
+        experiment, not this one.
         """
+        if "through_round" in kw:
+            raise TypeError("pass through_rounds=(...) to evaluate, not through_round")
+        cutoffs = self.truncations(transcript, through_rounds)
+        activations = {
+            round_key(k): self.contrast_activations_pair(transcript, through_round=k,
+                                                         **kw)
+            for k in cutoffs
+        }
         return JudgeOutput(
             transcript_id=transcript.transcript_id,
             verdict=self.verdict_pair(transcript, **kw),
-            activations=self.contrast_activations_pair(transcript, **kw),
+            activations=activations,
+            round_keys=[round_key(k) for k in cutoffs],
             layers=list(self.cached_layers),
             model_id=self.model_id,
         )
