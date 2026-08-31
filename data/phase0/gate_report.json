@@ -1,0 +1,473 @@
+{
+  "model": "Qwen/Qwen2.5-32B-Instruct",
+  "timestamp": "2026-08-31T06:52:51",
+  "gates": {
+    "C": {
+      "gate": "C",
+      "n_pairs": 10,
+      "single_order_best_loo_acc": {
+        "forward": 0.6,
+        "reverse": 0.6
+      },
+      "best_layer": 4,
+      "best_loo_acc": 0.6,
+      "best_train_acc": 0.6,
+      "clean_only_loo_acc": 0.7,
+      "n_layers_above_threshold": 0,
+      "logistic_loo_acc_at_best_layer": 0.35,
+      "logistic_vs_mass_mean_cosine": 0.53377765417099,
+      "layer_sweep": [
+        {
+          "layer": 0,
+          "method": "mass_mean",
+          "train_acc": 0.65,
+          "mean_diff_norm": 1.7140401601791382,
+          "loo_acc": 0.55
+        },
+        {
+          "layer": 1,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 2.0389533042907715,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 2,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 2.8343355655670166,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 3,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 3.8763351440429688,
+          "loo_acc": 0.55
+        },
+        {
+          "layer": 4,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 5.176782608032227,
+          "loo_acc": 0.6
+        },
+        {
+          "layer": 5,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 5.530857563018799,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 6,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 6.636809349060059,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 7,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 6.719818592071533,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 8,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 7.075623512268066,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 9,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 7.58761739730835,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 10,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 7.829735279083252,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 11,
+          "method": "mass_mean",
+          "train_acc": 0.55,
+          "mean_diff_norm": 10.147843360900879,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 12,
+          "method": "mass_mean",
+          "train_acc": 0.55,
+          "mean_diff_norm": 10.221308708190918,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 13,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.426085472106934,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 14,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.207737922668457,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 15,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.21275520324707,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 16,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.625508308410645,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 17,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.580288887023926,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 18,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.79901123046875,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 19,
+          "method": "mass_mean",
+          "train_acc": 0.55,
+          "mean_diff_norm": 10.983386993408203,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 20,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 10.920918464660645,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 21,
+          "method": "mass_mean",
+          "train_acc": 0.65,
+          "mean_diff_norm": 11.309425354003906,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 22,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 11.62131404876709,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 23,
+          "method": "mass_mean",
+          "train_acc": 0.65,
+          "mean_diff_norm": 11.765602111816406,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 24,
+          "method": "mass_mean",
+          "train_acc": 0.7,
+          "mean_diff_norm": 13.470158576965332,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 25,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 15.7431058883667,
+          "loo_acc": 0.55
+        },
+        {
+          "layer": 26,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 15.781496047973633,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 27,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 16.997655868530273,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 28,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 17.223556518554688,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 29,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 17.269393920898438,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 30,
+          "method": "mass_mean",
+          "train_acc": 0.7,
+          "mean_diff_norm": 16.93084144592285,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 31,
+          "method": "mass_mean",
+          "train_acc": 0.7,
+          "mean_diff_norm": 16.254358291625977,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 32,
+          "method": "mass_mean",
+          "train_acc": 0.7,
+          "mean_diff_norm": 15.334455490112305,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 33,
+          "method": "mass_mean",
+          "train_acc": 0.7,
+          "mean_diff_norm": 14.972528457641602,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 34,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 15.403162002563477,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 35,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 15.021539688110352,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 36,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 14.434545516967773,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 37,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 14.347269058227539,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 38,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 14.927077293395996,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 39,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 14.982034683227539,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 40,
+          "method": "mass_mean",
+          "train_acc": 0.85,
+          "mean_diff_norm": 17.388389587402344,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 41,
+          "method": "mass_mean",
+          "train_acc": 0.85,
+          "mean_diff_norm": 19.14500617980957,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 42,
+          "method": "mass_mean",
+          "train_acc": 0.9,
+          "mean_diff_norm": 20.038061141967773,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 43,
+          "method": "mass_mean",
+          "train_acc": 0.85,
+          "mean_diff_norm": 22.053117752075195,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 44,
+          "method": "mass_mean",
+          "train_acc": 0.85,
+          "mean_diff_norm": 23.753202438354492,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 45,
+          "method": "mass_mean",
+          "train_acc": 0.85,
+          "mean_diff_norm": 25.028427124023438,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 46,
+          "method": "mass_mean",
+          "train_acc": 0.85,
+          "mean_diff_norm": 29.052528381347656,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 47,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 33.48392105102539,
+          "loo_acc": 0.35
+        },
+        {
+          "layer": 48,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 37.79902267456055,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 49,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 42.11546325683594,
+          "loo_acc": 0.35
+        },
+        {
+          "layer": 50,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 45.93511962890625,
+          "loo_acc": 0.35
+        },
+        {
+          "layer": 51,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 49.80527114868164,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 52,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 53.0185432434082,
+          "loo_acc": 0.4
+        },
+        {
+          "layer": 53,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 55.69107437133789,
+          "loo_acc": 0.45
+        },
+        {
+          "layer": 54,
+          "method": "mass_mean",
+          "train_acc": 0.75,
+          "mean_diff_norm": 60.31060028076172,
+          "loo_acc": 0.55
+        },
+        {
+          "layer": 55,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 64.91493225097656,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 56,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 69.59518432617188,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 57,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 73.9798355102539,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 58,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 78.22496795654297,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 59,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 84.64427947998047,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 60,
+          "method": "mass_mean",
+          "train_acc": 0.8,
+          "mean_diff_norm": 94.24742126464844,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 61,
+          "method": "mass_mean",
+          "train_acc": 0.65,
+          "mean_diff_norm": 107.01205444335938,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 62,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 127.99102783203125,
+          "loo_acc": 0.5
+        },
+        {
+          "layer": 63,
+          "method": "mass_mean",
+          "train_acc": 0.6,
+          "mean_diff_norm": 175.82769775390625,
+          "loo_acc": 0.55
+        }
+      ],
+      "passed": false
+    }
+  },
+  "all_passed": false
+}

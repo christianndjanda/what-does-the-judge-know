@@ -1,0 +1,26 @@
+{
+  "model": "Qwen/Qwen2.5-32B-Instruct",
+  "tiers": [
+    {
+      "label": "tier 1: world knowledge, no debate",
+      "n": 6,
+      "order_consistency": 1.0,
+      "accuracy_consistent_only": 1.0,
+      "first_slot_rate": 0.5
+    },
+    {
+      "label": "tier 2: world knowledge, one-line debate",
+      "n": 6,
+      "order_consistency": 0.8333333333333334,
+      "accuracy_consistent_only": 1.0,
+      "first_slot_rate": 0.5833333333333334
+    },
+    {
+      "label": "tier 3: Phase 0 debates, passage excerpt shown to judge",
+      "n": 10,
+      "order_consistency": 0.2,
+      "accuracy_consistent_only": 1.0,
+      "first_slot_rate": 0.6
+    }
+  ]
+}
