@@ -106,7 +106,7 @@ EOF
 }
 
 # No --upgrade: install what is missing, do not churn what works.
-python -m pip install --quiet transformers accelerate || true
+python -m pip install --quiet transformers accelerate "jinja2>=3.1" || true
 
 if ! torch_healthy; then
   echo "torch is unhealthy after installing dependencies."
@@ -127,7 +127,7 @@ if [[ "$TORCH_BEFORE" != "$TORCH_AFTER" ]]; then
   echo "The image's torch was the known-good one. Reinstall it before continuing." >&2
   exit 1
 fi
-python -c 'import torch, numpy, transformers; print("torch", torch.__version__, "| numpy", numpy.__version__, "| transformers", transformers.__version__)'
+python -c 'import torch, numpy, transformers, jinja2; print("torch", torch.__version__, "| numpy", numpy.__version__, "| transformers", transformers.__version__, "| jinja2", jinja2.__version__)'
 
 say "QuALITY data"
 if python -c 'import sys; sys.path.insert(0,"src"); from judgeprobe import config; config.quality_dir()' 2>/dev/null; then
