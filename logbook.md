@@ -245,9 +245,28 @@ following the doc's own advice to keep the GPU off during Phase 2's API-bound
 generation brings it to ~$4. That discipline is worth 5–10x more than any model
 choice here.
 
-Constraint this introduces: 32B fp16 is ~65GB, so it needs the GH200's 96GB or an
-80GB card. A 40GB card cannot hold it, and §0 rules out quantisation on aarch64, so
-there is no fallback there.
+Constraint this introduces: 32B fp16 is ~65GB, ~68GB in use with KV cache at batch
+1, so it needs an 80GB card.
+
+**Correction to the cost estimate above, from the actual Lambda console.** No GH200
+was on offer, and the ~$1.50/hr figure was wrong. Real options: 1x A10 24GB $1.29,
+1x A100 40GB $1.99, 1x H100 80GB $4.29, 2x H100 $8.38, 8x A100 $22.32. Only the
+1x H100 80GB is a single-GPU card that fits the 32B. So the 8B-vs-32B decision costs
+about **$9–10 over the project** (~$13 vs ~$4 for ~3h of disciplined GPU time), not
+35 cents. Taking the H100 anyway: §0.1's own rationale is that probes are unreliable
+below ~13B, and Gate C interpretability is worth ten dollars.
+
+Two consequences of the instance actually available:
+
+- **It is x86, not aarch64.** The §0 wheel-availability warning — the doc's biggest
+  flagged early risk, budgeted 15 minutes and capable of costing hours — does not
+  apply. `setup_lambda.sh` now detects the architecture and says so. The torch-guard
+  precautions were kept regardless; they cost nothing.
+- **Quantisation stays out of scope, but for a new reason.** The doc excluded it on
+  aarch64 wheel grounds, which no longer hold on x86. It stays excluded because it
+  perturbs the activations being probed, which is a measurement-fidelity argument
+  and a stronger one. `setup_lambda.sh` refuses to proceed on an undersized card
+  rather than offering quantisation as a way out.
 
 ### Hook indexing — a real bug the gate caught
 
