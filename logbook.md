@@ -268,6 +268,42 @@ Two consequences of the instance actually available:
   and a stronger one. `setup_lambda.sh` refuses to proceed on an undersized card
   rather than offering quantisation as a way out.
 
+### The §0 wheel warning bit us anyway, through numpy
+
+First bootstrap on the H100 (Lambda Stack 22.04, x86, torch 2.7.0, Python 3.10)
+broke torch. Not via a wheel — via numpy.
+
+`setup_lambda.sh` ran `pip install --upgrade transformers accelerate numpy`, which
+pulled numpy 2.2.6. The shipped torch was compiled against the numpy 1.x C ABI, so
+`import torch` started emitting *"A module that was compiled using NumPy 1.x cannot
+be run in NumPy 2.2.6"* and `Failed to initialize NumPy: _ARRAY_API not found`.
+
+The instructive part is that **the guard I wrote to prevent exactly this did not
+fire.** It compared `torch.__version__` before and after, and the version string was
+still `2.7.0` — torch had not been replaced, it had been *broken underneath*. A
+version string is not a health check.
+
+Fixed by testing behaviour instead: `torch.zeros(1).numpy()` (exercises the
+torch↔numpy ABI) plus `torch.cuda.is_available()`. If that fails after installing,
+the script now pins `numpy<2` and re-checks, rather than reporting success. Also
+dropped the blanket `--upgrade`, which had no reason to churn a working numpy in
+the first place.
+
+Generalisation worth keeping for the writeup: §0 framed the environment risk as
+*wheel availability on aarch64*. The actual mechanism was an ABI break from an
+unnecessary upgrade, on x86, where the doc said the risk did not apply. The lesson
+is not "aarch64 is risky" but "do not upgrade what already works, and verify by
+behaviour rather than by version number".
+
+Two smaller fixes from the same run:
+
+- The script hard-failed on missing HF auth even for `Qwen2.5-32B-Instruct`, which
+  is Apache-2.0 and downloads anonymously. Auth is now required only for gated
+  repos (`meta-llama/*`, `google/gemma*`, `mistralai/*`).
+- Added a tokenizer-only preflight — chat template renders, `A`/`B` are single
+  tokens — which is a few MB and runs before the ~65GB weight pull. Gate A's
+  assumptions are now checked at $0 rather than after a download at $4.29/hr.
+
 ### Hook indexing — a real bug the gate caught
 
 Rerunning Gate B under the counterbalanced pipeline failed the hook-vs-`hidden_states`

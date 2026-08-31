@@ -88,16 +88,46 @@ echo "torch $TORCH_BEFORE"
 python -c 'import torch; assert torch.cuda.is_available(), "CUDA not available"; print("cuda ok")'
 
 say "project dependencies"
-# torch is deliberately absent from requirements.txt. If pip changes it anyway,
-# that is the failure mode the design doc warns about -- catch it loudly.
-python -m pip install --quiet --upgrade transformers accelerate numpy
+# torch is deliberately absent from requirements.txt -- the image's build is the
+# known-good one. numpy is too, and for a less obvious reason: the shipped torch is
+# compiled against a specific numpy ABI, so `pip install --upgrade numpy` pulls
+# numpy 2.x and silently breaks it. torch keeps its version string and stops being
+# able to convert tensors, which is why checking the version string is not enough.
+TORCH_BEFORE="$(python -c 'import torch; print(torch.__version__)' 2>/dev/null || echo MISSING)"
+echo "torch before: $TORCH_BEFORE"
+
+# Exercises what actually matters: the torch<->numpy ABI, and CUDA.
+torch_healthy() {
+  python - >/dev/null 2>&1 <<'EOF'
+import torch
+torch.zeros(1).numpy()
+assert torch.cuda.is_available()
+EOF
+}
+
+# No --upgrade: install what is missing, do not churn what works.
+python -m pip install --quiet transformers accelerate || true
+
+if ! torch_healthy; then
+  echo "torch is unhealthy after installing dependencies."
+  echo "Most likely numpy was upgraded past the ABI the shipped torch was built for."
+  echo "Pinning numpy<2 and retrying..."
+  python -m pip install --quiet "numpy<2"
+  if ! torch_healthy; then
+    echo "STOP: torch still broken after pinning numpy<2." >&2
+    python -c 'import torch; torch.zeros(1).numpy()' || true
+    exit 1
+  fi
+  echo "recovered."
+fi
+
 TORCH_AFTER="$(python -c 'import torch; print(torch.__version__)')"
 if [[ "$TORCH_BEFORE" != "$TORCH_AFTER" ]]; then
   echo "STOP: pip replaced torch ($TORCH_BEFORE -> $TORCH_AFTER)." >&2
   echo "The image's torch was the known-good one. Reinstall it before continuing." >&2
   exit 1
 fi
-python -c 'import transformers, accelerate, numpy; print("transformers", transformers.__version__)'
+python -c 'import torch, numpy, transformers; print("torch", torch.__version__, "| numpy", numpy.__version__, "| transformers", transformers.__version__)'
 
 say "QuALITY data"
 if python -c 'import sys; sys.path.insert(0,"src"); from judgeprobe import config; config.quality_dir()' 2>/dev/null; then
@@ -117,16 +147,40 @@ EOF
 fi
 
 say "Hugging Face auth"
-if [[ "$MODEL" == meta-llama/* ]]; then
-  echo "$MODEL is a GATED repo. You must have accepted Meta's licence on the model"
-  echo "page with the same HF account, then authenticate here."
-fi
-if python -c 'from huggingface_hub import HfApi; HfApi().whoami()' >/dev/null 2>&1; then
-  python -c 'from huggingface_hub import HfApi; print("logged in as", HfApi().whoami()["name"])'
+# Only gated repos need a login. Qwen2.5 is Apache-2.0 and downloads anonymously,
+# so do not block on auth the run does not need.
+case "$MODEL" in
+  meta-llama/*|google/gemma*|mistralai/*) GATED=1 ;;
+  *) GATED=0 ;;
+esac
+if (( GATED )); then
+  echo "$MODEL is a GATED repo. Accept its licence on the model page with the same"
+  echo "HF account, then authenticate here."
+  if python -c 'from huggingface_hub import HfApi; HfApi().whoami()' >/dev/null 2>&1; then
+    python -c 'from huggingface_hub import HfApi; print("logged in as", HfApi().whoami()["name"])'
+  else
+    echo "not logged in. Run:  huggingface-cli login   (or export HF_TOKEN=...)" >&2
+    exit 1
+  fi
 else
-  echo "not logged in. Run:  huggingface-cli login   (or export HF_TOKEN=...)"
-  exit 1
+  echo "$MODEL is not gated -- no HF login required."
 fi
+
+say "tokenizer preflight (a few MB, before the ~65GB weight pull)"
+# Catches a broken chat template or multi-token A/B labels now rather than after
+# a 65GB download at $4.29/hr.
+python - "$MODEL" <<'EOF'
+import sys
+from transformers import AutoTokenizer
+tok = AutoTokenizer.from_pretrained(sys.argv[1])
+msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
+text = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+assert text, "empty chat template"
+for letter in ("A", "B"):
+    ids = tok.encode(letter, add_special_tokens=False)
+    assert len(ids) == 1, f"{letter!r} is not a single token: {ids}"
+print("chat template ok; A/B are single tokens")
+EOF
 
 say "environment check + model smoke test"
 python scripts/check_env.py --model "$MODEL"
