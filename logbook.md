@@ -571,3 +571,48 @@ letter and speaking order -- balanced.
   result.
 
 Either way it is a reportable finding, and either way it costs about three minutes.
+
+### Gate C ceiling — the method works; the Phase 0 stimuli were the problem
+
+18 world-knowledge items, one-round debate, option letter and speaking order both
+balanced.
+
+- best LOO **1.00**, 40/64 layers >= 0.75, band centre layer 51
+- LOO 1.00 across a **26-layer contiguous run** (38-63), plus 27-28
+
+So the contrast-pair probe separates true from false when there is something to
+separate. **Gate C's failure on the Phase 0 corpus is about those stimuli, not the
+method. Do not take the s6 fallback.** Proceed to Phase 2 and re-run Gate C on real
+debates.
+
+**What this does and does not establish.** It shows the measurement apparatus works:
+hooks, contrast pairs, mass-mean, leave-one-pair-out can recover a truth
+representation from this judge's residual stream when one is clearly present. It
+does **not** show the judge forms a *debate-derived* truth representation. These are
+items Qwen2.5-32B knows from pre-training -- the probe may be reading prior knowledge
+rather than any conclusion drawn from the transcript. A null control on these items
+would very likely still separate, precisely because the model knows the capital of
+France with or without a debate.
+
+That distinction is the actual research question, and only Phase 2's real debates
+over passages the judge has not read can answer it. Recorded so the ceiling result is
+not over-claimed in the writeup: it licenses proceeding, nothing more.
+
+**An oddity worth noting.** Order consistency on these easy items was **0.50** --
+chance -- while accuracy on the debates that did survive the swap was 1.00. Compare
+tier 1 of the earlier ceiling diagnostic (same questions, no debate): consistency
+1.00. So wrapping a trivially easy question in a debate frame halves the judge's
+order robustness, even though the probe reads the answer at 100% and the judge is
+right whenever it commits.
+
+Two readings, not separated:
+
+1. A prompt artifact of my test. The system prompt says "Two debaters have read a
+   passage that you have not seen", which is false for world-knowledge items and may
+   be confusing the judge.
+2. A genuine knows-versus-says gap on easy items: the judge has the answer available
+   internally and still lets layout decide the output.
+
+(2) is close to the project's hypothesis, which is exactly why it should not be
+claimed from this test -- it was not designed to support it, n is 18, and (1) is
+unexcluded. Flagged as worth a clean experiment if time allows, not as a result.
