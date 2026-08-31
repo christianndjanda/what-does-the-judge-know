@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from judgeprobe import config  # noqa: E402
 from judgeprobe.quality import sample_questions  # noqa: E402
 from judgeprobe.transcripts import (  # noqa: E402
-    assign_balanced_letters, letter_balance, make_phase0_transcript, write_jsonl,
+    assign_balanced_letters, balanced_flags, letter_balance, make_phase0_transcript,
+    speaker_balance, write_jsonl,
 )
 
 
@@ -38,16 +39,24 @@ def main() -> int:
         print(f"WARNING: only {len(questions)} eligible questions found")
 
     half = len(questions) // 2
-    transcripts = [
-        make_phase0_transcript(
+    # Balanced within each condition so that neither the option letter nor the
+    # speaking order of the gold side correlates with condition or with truth.
+    speaks_first = {
+        "misleading": balanced_flags(half, seed=args.seed),
+        "clean": balanced_flags(len(questions) - half, seed=args.seed + 1),
+    }
+    transcripts = []
+    for i, q in enumerate(questions):
+        condition = "misleading" if i < half else "clean"
+        idx = i if condition == "misleading" else i - half
+        transcripts.append(make_phase0_transcript(
             q,
-            "misleading" if i < half else "clean",
+            condition,
             n_rounds=args.rounds,
             article_chars=config.PHASE0_ARTICLE_CHARS,
             seed=args.seed + i,
-        )
-        for i, q in enumerate(questions)
-    ]
+            gold_speaks_first=speaks_first[condition][idx],
+        ))
 
     # Exactly balanced within condition, not merely balanced in expectation.
     assign_balanced_letters(transcripts, seed=args.seed)
@@ -65,7 +74,9 @@ def main() -> int:
     print(f"  misleading: {n_mis}   clean: {len(transcripts) - n_mis}   "
           f"rounds: {args.rounds}")
     for condition, (n_a, total) in sorted(letter_balance(transcripts).items()):
-        print(f"  letter balance [{condition:10s}]: gold is 'A' in {n_a}/{total}")
+        print(f"  letter balance  [{condition:10s}]: gold is 'A' in {n_a}/{total}")
+    for condition, (n_f, total) in sorted(speaker_balance(transcripts).items()):
+        print(f"  speaker balance [{condition:10s}]: gold speaks first in {n_f}/{total}")
     print(f"  question manifest -> {manifest}")
     return 0
 

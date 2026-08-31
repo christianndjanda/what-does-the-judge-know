@@ -117,7 +117,14 @@ def main() -> int:
     print(f"  Gate C probe applied to null activations: {transfer:.2f}")
 
     print("\n  reading:")
-    if null_best["loo_acc"] >= real_best["loo_acc"] - 0.1:
+    if real_best["loo_acc"] < 0.75:
+        # Both arms at chance is not a failed control -- there was no signal to
+        # control for. Reporting FAIL would blame the contrast-pair design for a
+        # probe that never worked, a different problem with a different fix.
+        print("    UNINFORMATIVE. The with-debate probe is itself near chance, so")
+        print("    there is no Gate C result for this control to qualify. Fix Gate")
+        print("    C first; this script means something only once the probe works.")
+    elif null_best["loo_acc"] >= real_best["loo_acc"] - 0.1:
         print("    FAIL. The probe separates the classes just as well with no debate")
         print("    present, so it is reading the answer strings rather than anything")
         print("    the judge concluded. Gate C is not evidence. Rethink the contrast")

@@ -101,6 +101,26 @@ def assign_balanced_letters(transcripts: list[Transcript], seed: int = 0) -> lis
     return transcripts
 
 
+def balanced_flags(n: int, seed: int = 0) -> list[bool]:
+    """`n` booleans, exactly half True (one extra when odd), in a seeded order.
+
+    Used for `gold_speaks_first`, which must be decided at generation time.
+    """
+    flags = [i % 2 == 0 for i in range(n)]
+    random.Random(seed).shuffle(flags)
+    return flags
+
+
+def speaker_balance(transcripts: list[Transcript]) -> dict[str, tuple[int, int]]:
+    """{condition: (n_gold_speaks_first, n_total)}."""
+    out: dict[str, list[int]] = {}
+    for t in transcripts:
+        row = out.setdefault(t.condition, [0, 0])
+        row[0] += int(t.meta.get("gold_speaks_first", True))
+        row[1] += 1
+    return {k: (v[0], v[1]) for k, v in out.items()}
+
+
 def letter_balance(transcripts: list[Transcript]) -> dict[str, tuple[int, int]]:
     """{condition: (n_gold_is_A, n_total)} -- for asserting the balance held."""
     out: dict[str, list[int]] = {}
@@ -168,6 +188,7 @@ def make_phase0_transcript(
     n_rounds: int = 2,
     article_chars: int = 4000,
     seed: int = 0,
+    gold_speaks_first: bool = True,
 ) -> Transcript:
     """Build one templated two-sided debate.
 
@@ -181,18 +202,26 @@ def make_phase0_transcript(
     gold_register = _HEDGED if condition == "misleading" else _GROUNDED
     distractor_register = _GROUNDED if condition == "misleading" else _HEDGED
 
-    # Debater A always argues the gold answer; the judge prompt shuffles the
-    # option letters, so A/B order carries no signal about which side is correct.
+    # Which debater argues gold must vary across the corpus. If the gold side were
+    # always the first speaker, "does the appended answer match what Debater A said"
+    # would be perfectly correlated with truth -- and a probe reading that structural
+    # cue would score highly AND require the debate, so it would pass the null
+    # control while measuring nothing about truth. Balanced by the caller using
+    # `balanced_flags`; unlike the option letter this cannot be reassigned after the
+    # fact, since it changes the turn order in the transcript itself.
+    gold_speaker = "Debater A" if gold_speaks_first else "Debater B"
+    distractor_speaker = "Debater B" if gold_speaks_first else "Debater A"
+
     turns: list[Turn] = []
     for r in range(1, n_rounds + 1):
-        turns.append(
-            Turn(r, GOLD_SIDE, "Debater A",
-                 _turn_text(rng, gold_register, q.gold, rebut=r > 1))
-        )
-        turns.append(
-            Turn(r, DISTRACTOR_SIDE, "Debater B",
-                 _turn_text(rng, distractor_register, q.best_distractor, rebut=r > 1))
-        )
+        gold_turn = Turn(r, GOLD_SIDE, gold_speaker,
+                         _turn_text(rng, gold_register, q.gold, rebut=r > 1))
+        distractor_turn = Turn(r, DISTRACTOR_SIDE, distractor_speaker,
+                               _turn_text(rng, distractor_register,
+                                          q.best_distractor, rebut=r > 1))
+        # Debater A always speaks first within a round; who that is now varies.
+        turns.extend([gold_turn, distractor_turn] if gold_speaks_first
+                     else [distractor_turn, gold_turn])
     return Transcript(
         transcript_id=f"p0-{condition}-{q.question_id}",
         question_id=q.question_id,
@@ -203,5 +232,6 @@ def make_phase0_transcript(
         turns=turns,
         article_excerpt=q.article[:article_chars],
         meta={"title": q.title, "article_id": q.article_id, "phase": 0,
-              "difficult": q.difficult, "synthetic": True},
+              "difficult": q.difficult, "synthetic": True,
+              "gold_speaks_first": gold_speaks_first},
     )

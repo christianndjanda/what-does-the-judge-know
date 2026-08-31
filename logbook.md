@@ -472,3 +472,53 @@ comes back high — probe still ~1.00 with the debate removed — which would me
 measures an answer-string or prior-knowledge artifact, not a judge conclusion.**
 Recorded in advance so it is falsifiable: a collapse toward chance would be genuinely
 surprising and would make Gate C stronger than currently credited.
+
+### Null control — prediction wrong, Gate C survives
+
+| | best layer | LOO |
+| --- | --- | --- |
+| with debate | 27 | **1.00** |
+| without debate | 39 | **0.60** |
+
+Zero of 64 layers clear 0.75 without the debate. Cosine between the two directions
+at layer 27 is 0.348, and the Gate C probe scores 0.60 on null activations. The 0.60
+is a maximum over 64 layers, which overstates it: with ten pairs LOO moves in steps
+of 0.05, and a best-of-64 selection beats 0.5 comfortably on noise alone. The null
+arm is at chance.
+
+**The prediction registered in the previous entry was wrong.** I expected null LOO to
+stay near 1.00 on the reasoning that a judge showing only 0.20 order consistency is
+not engaging with the transcript, so the probe must be reading the appended answer
+strings. It is not. Removing the debate destroys the separation, so Gate C is
+measuring something computed from the debate. Recording this because a wrong
+pre-registered prediction is the cheapest kind: it cost nothing and it removed a
+live alternative explanation that would otherwise have needed arguing away in the
+writeup.
+
+The apparent contradiction it leaves — verdict mostly determined by slot order,
+residual stream nonetheless carrying the answer — is not resolved, and should not be
+presented as a knows-versus-says result on ten synthetic transcripts. It is a reason
+to run Phase 2 and look again.
+
+### A confound the null control cannot catch
+
+Found while reading the generator after the null control passed: **every Phase 0
+transcript had the gold side speaking first.** So "does the appended answer match
+what Debater A claimed" was perfectly correlated with truth across the whole corpus.
+
+A probe reading that structural cue would score 1.00 *and* would require the debate
+to be present — so it passes the null control cleanly while measuring nothing about
+truth. The null control rules out answer-string and prior-knowledge artifacts; it
+says nothing about structural cues inside the transcript.
+
+Fixed at generation time rather than post hoc, since speaking order changes the
+transcript itself: `gold_speaks_first` is now balanced within each condition via
+`balanced_flags`, and `speaker_balance()` reports it alongside the letter balance.
+Both are 3/5 per condition, and the two are decorrelated.
+
+**This carries into Phase 2 as a design requirement**: which debater argues the gold
+answer must be randomised there too, or the same confound reappears in the real
+corpus with no control able to detect it.
+
+Gate C should be re-run on the regenerated corpus. If LOO stays at 1.00 with the
+speaking order decorrelated, the result is considerably stronger than it was.
