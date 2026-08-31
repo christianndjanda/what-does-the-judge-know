@@ -522,3 +522,52 @@ corpus with no control able to detect it.
 
 Gate C should be re-run on the regenerated corpus. If LOO stays at 1.00 with the
 speaking order decorrelated, the result is considerably stronger than it was.
+
+### Gate C FAILS once speaking order is decorrelated
+
+Re-ran Gate B and C on the regenerated corpus, with `gold_speaks_first` balanced.
+
+| | gold always first | speaker balanced |
+| --- | --- | --- |
+| best LOO | **1.00** | **0.60** |
+| clean-only LOO | 1.00 | 0.70 |
+| layers >= 0.75 | 33 / 64 | **0 / 64** |
+| logistic LOO | 1.00 | 0.35 |
+
+The whole sweep now sits between 0.35 and 0.60. **The entire Gate C signal was the
+debater-position confound.** The probe was reading "does the appended answer match
+what Debater A said", which was perfectly correlated with truth in the old corpus.
+
+Worth noting `train_acc` still reaches 0.90 at layers 40-46 in the corrected run.
+In-sample accuracy would have shown a strong result; leave-one-pair-out rejects it.
+That is the clearest justification in this project for insisting on LOO.
+
+**The design doc's rule would send us to the s6 fallback here. Two reasons not to
+follow it yet.**
+
+1. *The failure is confounded with stimulus quality.* The doc says "if Gate C fails
+   on **easy data**". The Phase 0 corpus is not easy data -- both debaters assert the
+   same kind of thing in different registers with no verifiable evidence either way,
+   and the judge demonstrably does not engage with it (tier 3 order consistency 0.20
+   against 1.00 on real questions). A judge that is not processing the debate has no
+   considered answer in its residual stream to probe. This is the same ambiguity that
+   the ceiling diagnostic already resolved once for order consistency.
+2. *s6 would not rescue a method failure anyway.* The fallback probes a judge reading
+   a single misleading argument versus a clean one -- still the contrast-pair method.
+   If contrast pairs do not work on this judge, s6 inherits the problem. The doc's
+   decision rule implicitly assumes the failure is about the debate framing rather
+   than the method, and does not distinguish the two.
+
+So the fork is: does the contrast-pair probe work on data the judge *does* engage
+with? Added `scripts/phase0_gate_c_ceiling.py`: 18 world-knowledge questions the
+judge answers correctly and consistently, wrapped in a one-round debate where one
+side gives a real reason and the other asserts. Both nuisance factors -- option
+letter and speaking order -- balanced.
+
+- Probe separates them => the method is sound, Gate C's failure is about the Phase 0
+  stimuli, do not take s6, proceed to Phase 2 and re-run Gate C on real debates.
+- Probe fails there too => pre-registered negative #2, this judge does not linearly
+  encode the answer in the assumed way, and s6 will not help. Report it as the
+  result.
+
+Either way it is a reportable finding, and either way it costs about three minutes.
