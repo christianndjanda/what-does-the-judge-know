@@ -24,3 +24,10 @@ half cannot be regenerated without deliberately reintroducing the confound.
 Gate A was only ever run on the pre-fix corpus, so `verdicts.json` describes those
 transcripts -- not the balanced `transcripts.jsonl` now in the repo. The two do not
 correspond. Re-run `--gate a` on the current corpus before using it for anything.
+
+## A note on paths in these files
+
+`gate_report_gold_always_first.json` records an `activations.npz` path under
+`what-does-the-judge-knows` -- the repository's name at the time of that run. The
+repository was later renamed to `what-does-the-judge-know`. The path is left as
+recorded: it is what the run actually wrote, and rewriting it would falsify the log.

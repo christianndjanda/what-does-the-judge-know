@@ -137,7 +137,7 @@ else
 NOT FOUND. QuALITY v1.0.1 is not redistributed in this repo. Either:
 
   * copy it up from your laptop (~27MB, a few seconds):
-      scp -r <local>/QuALITY.v1.0.1 ubuntu@<instance-ip>:~/what-does-the-judge-knows/data/quality
+      scp -r <local>/QuALITY.v1.0.1 ubuntu@<instance-ip>:~/what-does-the-judge-know/data/quality
   * or fetch the release from https://github.com/nyu-mll/quality and unzip it
     into data/quality/
 
