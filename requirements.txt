@@ -1,0 +1,7 @@
+# Kept deliberately small: every extra dependency is an aarch64 wheel risk on GH200.
+# NOTE: do NOT pip-install torch on the Lambda image -- use the one that ships with it.
+torch
+transformers>=4.44
+numpy
+# accelerate is used only for device_map="auto" model loading.
+accelerate

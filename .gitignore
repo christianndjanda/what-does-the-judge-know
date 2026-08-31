@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Data + artefacts: regenerable, and large.
+data/
+logs/
+out/
+*.npy
+*.npz
+*.safetensors
