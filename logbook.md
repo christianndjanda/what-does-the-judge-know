@@ -433,3 +433,42 @@ mostly determined by layout; Gate C says a probe recovers the correct answer at
 100% from the same forward passes. Read naively that is the project's hypothesis
 appearing in the sanity checks, which is exactly when to be most suspicious. Both
 numbers are on ten synthetic transcripts, and the null control has not run yet.
+
+### Judge-ceiling diagnostic — the 0.10 was the stimuli, not the judge
+
+Ran `scripts/diagnose_judge_ceiling.py` on Qwen2.5-32B to disambiguate Gate A's
+0.10 order consistency.
+
+| tier | consistency | accuracy | first-slot |
+| --- | --- | --- | --- |
+| 1 — world knowledge, no debate | **1.00** | 1.00 | 0.50 |
+| 2 — same, one-line debate | 0.83 | 1.00 | 0.58 |
+| 3 — Phase 0 debates + passage excerpt | 0.20 | 1.00 | 0.60 |
+
+**Verdict: the prompt format and the judge are sound; the Phase 0 stimuli are not.**
+Tier 1 at 100%, with a first-slot rate of exactly 0.50, rules out position anchoring
+as a property of the format. Tier 2 shows the debate framing costs one item in six.
+Tier 3 recovers the low number, so it is the templated boilerplate — both debaters
+saying near-identical things — that leaves the judge nothing to discriminate on.
+
+Consequence: **no prompt change.** The reasoning-before-answering fix under
+consideration would have been tuning against a phantom. Re-measure order consistency
+on real Sonnet debates in Phase 2, where it is now an interpretable metric because
+tier 1 gives it a ceiling.
+
+Also closed permanently: if Phase 2 debates still show low consistency, it is not the
+format, the framing, or the judge.
+
+Accuracy was 1.00 in every tier, including the two tier-3 debates that survived the
+swap. Whenever this judge commits to a content-driven answer it is right. Small n,
+but relevant to Q0 — it hints the judge may not be easy to steer.
+
+**Prediction registered before running the null control.** On these stimuli the judge
+is demonstrably not engaging with the transcript (tier 3: 0.20), yet Gate C's probe
+separates gold from distractor at 1.00 LOO on the same forward passes. If the debate
+is not entering the judge's decision, the probe is most likely reading the question,
+the options and the appended answer string. **I therefore predict the null control
+comes back high — probe still ~1.00 with the debate removed — which would mean Gate C
+measures an answer-string or prior-knowledge artifact, not a judge conclusion.**
+Recorded in advance so it is falsifiable: a collapse toward chance would be genuinely
+surprising and would make Gate C stronger than currently credited.
