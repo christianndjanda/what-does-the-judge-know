@@ -304,6 +304,36 @@ Two smaller fixes from the same run:
   tokens — which is a few MB and runs before the ~65GB weight pull. Gate A's
   assumptions are now checked at $0 rather than after a download at $4.29/hr.
 
+### Stale system packages, and how the preflight paid for itself
+
+After the numpy fix, two more failures in the same family — Lambda Stack 22.04's
+system packages are too old for transformers 5.16.1:
+
+- `jinja2` 3.0.3 (needs ≥3.1). `apply_chat_template` renders through Jinja, so this
+  broke every prompt the project builds.
+- `Pillow` 9.0.1 (needs ≥9.1 for `PIL.Image.Resampling`). This one is pure
+  collateral: transformers eagerly imports its object-detection loss chain, which
+  touches `image_utils`, which touches Pillow. We do no vision at all, and yet
+  `Qwen2ForCausalLM` would not import.
+
+Both were missing from `requirements.txt` because they happened to be satisfied on
+the dev box — the classic way a dependency stays invisible until a clean machine.
+
+**The preflight is what made these cheap.** Both surfaced before any weights
+downloaded: jinja2 during the tokenizer check, Pillow during model-class
+resolution (which happens after the tiny config fetch but before the shards). Three
+failed bootstrap attempts cost a few MB and a few minutes, instead of three 65GB
+pulls at $4.29/hr.
+
+Extended the preflight accordingly: it now resolves and imports the model class via
+`AutoModelForCausalLM._model_mapping[type(cfg)]` without instantiating it, walking
+the same import chain `from_pretrained` uses. That is the check that would have
+caught the Pillow failure first time.
+
+Standing lesson for the environment section of the writeup: on a fresh machine, the
+binding constraint was not GPU, wheels, or the model — it was four stale
+transitive dependencies, three of which this project never uses directly.
+
 ### Hook indexing — a real bug the gate caught
 
 Rerunning Gate B under the counterbalanced pipeline failed the hook-vs-`hidden_states`

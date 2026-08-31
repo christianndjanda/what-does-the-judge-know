@@ -8,3 +8,7 @@ accelerate
 # apply_chat_template renders through Jinja; every prompt we build goes through it.
 # Lambda Stack 22.04 ships 3.0.3, which is too old.
 jinja2>=3.1
+# Not used by this project. transformers eagerly imports its object-detection loss
+# chain, which touches PIL.Image.Resampling (Pillow >= 9.1). Ubuntu 22.04's system
+# Pillow is 9.0.1, so importing any model class fails without this.
+Pillow>=9.1

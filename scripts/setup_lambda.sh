@@ -106,7 +106,7 @@ EOF
 }
 
 # No --upgrade: install what is missing, do not churn what works.
-python -m pip install --quiet transformers accelerate "jinja2>=3.1" || true
+python -m pip install --quiet transformers accelerate "jinja2>=3.1" "Pillow>=9.1" || true
 
 if ! torch_healthy; then
   echo "torch is unhealthy after installing dependencies."
@@ -166,13 +166,25 @@ else
   echo "$MODEL is not gated -- no HF login required."
 fi
 
-say "tokenizer preflight (a few MB, before the ~65GB weight pull)"
-# Catches a broken chat template or multi-token A/B labels now rather than after
-# a 65GB download at $4.29/hr.
+say "preflight (a few MB, before the ~65GB weight pull)"
+# Everything here is cheap and catches a class of failure that would otherwise
+# surface after a 65GB download at $4.29/hr: a broken chat template, multi-token
+# A/B labels, or -- as happened on Lambda Stack 22.04 -- a stale system package
+# that makes the model class fail to import at all.
 python - "$MODEL" <<'EOF'
 import sys
-from transformers import AutoTokenizer
-tok = AutoTokenizer.from_pretrained(sys.argv[1])
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
+model_id = sys.argv[1]
+
+# Resolve and import the model class without instantiating it. This walks the same
+# import chain from_pretrained uses, so a stale Pillow/jinja2 fails here for free
+# rather than after the weights are on disk.
+cfg = AutoConfig.from_pretrained(model_id)
+cls = AutoModelForCausalLM._model_mapping[type(cfg)]
+print("model class imports:", cls.__name__)
+
+tok = AutoTokenizer.from_pretrained(model_id)
 msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
 text = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
 assert text, "empty chat template"
