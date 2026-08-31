@@ -4,10 +4,19 @@ __pycache__/
 venv/
 .env
 
-# Data + artefacts: regenerable, and large.
-data/
+# Data and artefacts are regenerable, and large -- with one exception. The Phase 0
+# result files (gate reports, diagnostics, the transcripts they were computed on)
+# are the evidence behind the writeup, they are small, and they cannot be
+# reproduced once the GPU instance is terminated. So they are tracked; the
+# activation caches, which are large and regenerable, are not.
+data/*
+!data/phase0/
+data/phase0/*
+!data/phase0/*.json
+!data/phase0/*.jsonl
 logs/
 out/
+
 *.npy
 *.npz
 *.safetensors
