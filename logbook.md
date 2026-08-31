@@ -334,6 +334,34 @@ Standing lesson for the environment section of the writeup: on a fresh machine, 
 binding constraint was not GPU, wheels, or the model — it was four stale
 transitive dependencies, three of which this project never uses directly.
 
+### A statistic that would have inverted the 32B result
+
+Caught before the first real run, while re-reading `diagnose_position_bias.py`.
+
+Its summary compared **means**: `|mean(normal) - mean(swapped)|`, reported as
+"near 0 => the preference is for the slot, not the answer". That was right for
+SmolLM2 by accident. Once letter assignment is balanced across the corpus, gold
+sits in the first slot half the time, so a *content-driven* judge averages ~0.5 on
+P(first) in both the normal and swapped conditions. The means cancel, the statistic
+reads ~0, and the script would have announced "content-independent" precisely when
+the judge was working perfectly — inverting the conclusion on the 32B.
+
+The per-item difference does not cancel: swapping the slots flips which answer is
+printed first, so a content-driven judge moves a long way on *every single item*
+even though the corpus mean does not budge. Now reports
+`mean(|normal_i - swapped_i|)`, plus mean P(gold) in both conditions, which is
+unambiguous either way.
+
+Re-ran on SmolLM2 to confirm the earlier conclusion survives the change: content
+sensitivity 0.005, still positional. The new P(gold) row reads 0.654 / 0.346 —
+summing to 1.0, the signature of a purely positional judge, since swapping flips
+P(gold) exactly. A content-driven judge shows both numbers high instead.
+
+Worth noting the near-miss: the balanced-assignment fix is what *created* this
+cancellation. A correction in one place invalidated a summary statistic elsewhere,
+and nothing would have flagged it — the script would simply have printed a
+confident, wrong sentence.
+
 ### Hook indexing — a real bug the gate caught
 
 Rerunning Gate B under the counterbalanced pipeline failed the hook-vs-`hidden_states`

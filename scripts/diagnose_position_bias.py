@@ -17,6 +17,13 @@ On SmolLM2-135M (Phase 0 smoke run): normal 0.805, swapped 0.811, numeric 0.807,
 XY 0.861, no_debate 0.673 -- i.e. primacy over the first slot, content-independent,
 and immune to relabelling. That is what motivated counterbalancing.
 
+Note on the statistics: comparisons are means of per-item absolute differences, not
+differences of means. Letter assignment is balanced across the corpus, so a
+content-driven judge sits at ~0.5 on mean P(first) in both the normal and swapped
+conditions; differencing the means would cancel the effect and read as "no content
+sensitivity" precisely when the judge is working. mean P(gold) is reported for the
+same reason -- it does not cancel.
+
 Usage:
     python scripts/diagnose_position_bias.py --model <hf-id> [-n 6]
 """
@@ -77,6 +84,7 @@ def main() -> int:
     for t in transcripts:
         layout = judge.layout(t)
         a, b = layout.option_a, layout.option_b
+        gold_first = layout.gold_letter == "A"
         row = {
             "normal": p_first(build_judge_messages(t, layout)),
             "swapped": p_first(build_judge_messages(t, layout.swapped())),
@@ -85,7 +93,12 @@ def main() -> int:
             "XY": p_first(relabelled(t, ("X", "Y"), a, b, t.render()), labels=("X", "Y")),
             "no_debate": p_first(relabelled(t, ("A", "B"), a, b, "(no debate took place)")),
         }
-        rows.append(row | {"transcript_id": t.transcript_id})
+        # P(gold) is unambiguous where P(first) is not: with a balanced corpus a
+        # content-driven judge averages ~0.5 on P(first) simply because gold is in
+        # the first slot half the time.
+        row["p_gold_normal"] = row["normal"] if gold_first else 1 - row["normal"]
+        row["p_gold_swapped"] = (1 - row["swapped"]) if gold_first else row["swapped"]
+        rows.append(row | {"transcript_id": t.transcript_id, "gold_first": gold_first})
         print(f"  {t.transcript_id[:32]:32s} "
               + "  ".join(f"{k}={row[k]:.3f}" for k in VARIANTS), flush=True)
 
@@ -94,18 +107,35 @@ def main() -> int:
     for k in VARIANTS:
         print(f"    {k:10s} {means[k]:.3f}")
 
+    # Per-transcript absolute differences, NOT differences of means. Letter
+    # assignment is balanced across the corpus, so a content-driven judge averages
+    # ~0.5 on P(first) in both the normal and swapped conditions -- the means cancel
+    # and would falsely read as "no content sensitivity" precisely when the judge is
+    # working. The per-item difference does not cancel: swapping the slots flips
+    # which answer is printed first, so a content-driven judge moves on every item.
+    swap_delta = float(np.mean([abs(r["normal"] - r["swapped"]) for r in rows]))
+    label_delta = float(np.mean([abs(r["normal"] - r["numeric"]) for r in rows]))
+    p_gold = float(np.mean([r["p_gold_normal"] for r in rows]))
+    p_gold_sw = float(np.mean([r["p_gold_swapped"] for r in rows]))
+
+    print("\n  mean P(gold), which does not cancel over a balanced corpus:")
+    print(f"    normal {p_gold:.3f}   swapped {p_gold_sw:.3f}")
+    print("      0.5 = no content signal; high and stable across both = reads content")
+
     print("\n  reading:")
-    print(f"    content sensitivity : |normal - swapped| = "
-          f"{abs(means['normal'] - means['swapped']):.3f}  (near 0 => the preference "
-          f"is for the slot, not the answer)")
-    print(f"    label dependence    : |normal - numeric| = "
-          f"{abs(means['normal'] - means['numeric']):.3f}  (near 0 => relabelling "
-          f"will not fix it)")
-    print(f"    structural prior    : no_debate = {means['no_debate']:.3f}  "
-          f"(0.5 = unbiased; this is the contextual-calibration prior)")
+    print(f"    content sensitivity : mean |normal - swapped| per item = {swap_delta:.3f}")
+    print("      near 0 => the preference is for the slot, not the answer (bad)")
+    print("      large  => swapping the slots moves the answer, i.e. content wins")
+    print(f"    label dependence    : mean |normal - numeric| per item = {label_delta:.3f}")
+    print("      near 0 => relabelling A/B -> 1/2 changes nothing")
+    print(f"    structural prior    : no_debate = {means['no_debate']:.3f}")
+    print("      0.5 = unbiased; this is also the contextual-calibration prior")
+
+    summary = {"swap_delta": swap_delta, "label_delta": label_delta,
+               "p_gold_normal": p_gold, "p_gold_swapped": p_gold_sw}
 
     out = config.PHASE0_DIR / "position_bias.json"
-    out.write_text(json.dumps({"model": args.model, "means": means, "rows": rows},
+    out.write_text(json.dumps({"model": args.model, "means": means, "summary": summary, "rows": rows},
                               indent=2), encoding="utf-8")
     print(f"\n  wrote {out}")
     return 0
