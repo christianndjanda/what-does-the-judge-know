@@ -360,6 +360,15 @@ def main() -> int:
         "all_passed": all(r["passed"] for r in results.values()),
     }
     GATE_REPORT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    # Also keep a timestamped copy. A later partial run (--gate c) otherwise
+    # overwrites an earlier full report, and on an ephemeral GPU instance that
+    # result cannot be recovered.
+    archive = config.PHASE0_DIR / "archive"
+    archive.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%dT%H%M%S")
+    gates_run = "".join(sorted(results)).lower() or "none"
+    (archive / f"gate_report_{stamp}_{gates_run}.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8")
 
     print("\n" + "=" * 60)
     for name, r in results.items():

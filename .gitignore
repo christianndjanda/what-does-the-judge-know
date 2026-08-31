@@ -14,6 +14,10 @@ data/*
 data/phase0/*
 !data/phase0/*.json
 !data/phase0/*.jsonl
+!data/phase0/archive/
+data/phase0/archive/*
+!data/phase0/archive/*.json
+!data/phase0/archive/*.md
 logs/
 out/
 
