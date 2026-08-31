@@ -123,6 +123,20 @@ def gate_a(judge, transcripts) -> dict:
           f"misleading {by_cond['misleading']:.0%}")
     print(f"  position bias: picked the first-listed option in {first_slot_rate:.0%} "
           f"of {len(picks)} runs (50% = content-driven)")
+    # Order consistency is the sharper diagnostic, and it catches a case the global
+    # slot rate misses: a judge can anchor on a *per-item* slot -- always A on some
+    # prompts, always B on others -- so first_slot_rate averages to a healthy-looking
+    # ~0.5 while presentation order still decides every verdict. Chance consistency
+    # for a coin-flipping judge is 0.5, so anything well below that means the judge
+    # is picking the same slot in both orders.
+    if consistency_rate <= 0.4:
+        print(f"  WARNING: only {consistency_rate:.0%} of debates survived the order swap.")
+        print("           The judge is picking the same SLOT in both presentations, so its")
+        print("           verdict is a function of layout, not argument. Note this is not")
+        print("           visible in first_slot_rate when the anchoring is per-item.")
+        print("           Q0 is unmeasurable on stimuli like these. Before blaming the")
+        print("           judge, check whether the stimuli give it anything to separate:")
+        print("           Phase 0 transcripts are templated boilerplate by design.")
     if first_slot_rate >= 0.9 or first_slot_rate <= 0.1:
         print("  WARNING: the judge is answering by position, not by content.\n"
               "           Counterbalancing correctly voids these verdicts, but that "
@@ -241,6 +255,14 @@ def gate_c() -> dict:
     rows = probes.sweep_layers(gold, distractor, fit=probes.fit_mass_mean, loo=True)
     best = probes.best_layer(rows, key="loo_acc")
     good = [r for r in rows if r["loo_acc"] >= GATE_C_MIN_LOO_ACC]
+    band = probes.best_band(rows, key="loo_acc")
+    if band is not None and band["layer"] != best["layer"]:
+        print(f"  note: argmax is layer {best['layer']}, but the centre of the longest "
+              f"run of top-scoring layers is {band['layer']}.")
+        print("        Ties at the maximum are broken arbitrarily by argmax; a "
+              "layer surrounded by equally good layers is the more robust "
+              "choice. Using the band centre.")
+        best = band
 
     print(f"  {'layer':>5}  {'train':>6}  {'loo':>6}   (every 4th layer shown)")
     for r in rows:

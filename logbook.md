@@ -379,7 +379,57 @@ Fixed the *check*, not the capture: layers 0..n-2 must match exactly, and the fi
 layer must equal `norm(hook[-1])`. Both now report 0.00e+00. This is a stronger
 check than the original.
 
-_GH200 run on Llama-3.1-8B-Instruct — the real Phase 0 gate._
+### Phase 0 gate run — Qwen2.5-32B-Instruct, 1x H100 80GB, 2026-08-31
 
-<!-- fill in: date, gate report, position-bias diagnostic, decision to proceed or
-     take the §6 fallback -->
+**All three gates PASS.** fp16, 64 layers, d_model 5120.
+
+**Gate A: PASS on parseability (20/20), but the interesting number is elsewhere.**
+`order_consistency_rate = 0.10`. Nine of ten debates gave *opposite answers*
+depending only on which slot the options were printed in — the judge picked the
+same slot in both presentations.
+
+`first_slot_rate` was 0.55, i.e. apparently healthy, and the warning keyed to it
+did not fire. Decomposing the 20 runs: 5 debates always-A, 4 always-B, 1
+content-driven. The anchoring is **per-item**, so the global rate averages out and
+hides it. Added a warning on order consistency, which is the sharper diagnostic;
+chance for a coin-flipping judge is 0.5, so 0.10 is far below what randomness
+would give.
+
+`verdict_accuracy_consistent_only = 1.0` is on n=1 and means nothing.
+
+**Do not read this as a finding about the judge yet.** Phase 0 transcripts are
+templated boilerplate in which both debaters say near-identical things; the
+conditions differ only in register. A judge with nothing to discriminate on may
+default to position. This is genuinely ambiguous between "Qwen2.5-32B is heavily
+position-anchored" and "our synthetic stimuli carry no signal", and Phase 0 cannot
+separate them. **Re-measure on real Sonnet debates in Phase 2 before it bears on
+Q0.** If order consistency is still ~0.1 there, Q0 is unmeasurable and that is a
+reportable result in its own right (pre-registered negative #3).
+
+**Gate B: PASS.** `(10, 64, 5120)` per class per order, no problems, hooks exact.
+
+**Gate C: PASS, and strongly.** Best-layer LOO 1.0, 33/64 layers above the 0.75
+threshold, clean-only held-out 1.0, and both single presentation orders 1.0
+independently. It is a band, not a spike: layers 40–46 are seven consecutive 1.0s
+with 0.95 shoulders. Logistic (secondary) also 1.0, cosine 0.79 with mass-mean.
+
+Two caveats recorded before this gets treated as a result:
+
+1. **Layer selection.** Argmax returned layer 27, which is an isolated spike
+   (neighbours 0.85 and 0.90) that happened to be the first of eight ties at 1.0.
+   Added `best_band`, which takes the centre of the longest contiguous run of
+   top-scoring layers — layer 43 here. A spike among ~64 layers is selection noise;
+   a run of seven is evidence.
+2. **The probe may not need the debate at all.** The contrast pairs differ by the
+   appended answer text, so a probe could separate them on properties of the answer
+   strings — if QuALITY gold answers are systematically longer or more specific
+   than their distractors — without reading the transcript. Gate C would score 1.0
+   on a dataset artifact. Added `scripts/phase0_null_control.py`, which rebuilds the
+   identical pairs with the debate removed. If null LOO stays near 1.0, Gate C is
+   not evidence and the contrast-pair design needs rethinking before Phase 3.
+
+**Standing tension to resolve in Phase 2.** Gate A says the judge's *verdict* is
+mostly determined by layout; Gate C says a probe recovers the correct answer at
+100% from the same forward passes. Read naively that is the project's hypothesis
+appearing in the sanity checks, which is exactly when to be most suspicious. Both
+numbers are on ten synthetic transcripts, and the null control has not run yet.

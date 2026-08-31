@@ -147,6 +147,29 @@ def best_layer(rows: list[dict], key: str = "loo_acc") -> dict:
     return max(rows, key=lambda r: (r.get(key, r["train_acc"]), r["train_acc"]))
 
 
+def best_band(rows: list[dict], key: str = "loo_acc") -> dict | None:
+    """Centre of the longest contiguous run of top-scoring layers.
+
+    `best_layer` takes an argmax, and when several layers tie at the maximum the
+    winner is whichever came first -- which can be an isolated spike sitting next to
+    much worse layers. A layer in the middle of a run of equally good layers is a
+    more robust selection, and a run is also better evidence than a spike that the
+    signal is real rather than selection noise over ~60 layers.
+    """
+    if not rows:
+        return None
+    top = max(r.get(key, r["train_acc"]) for r in rows)
+    best_run, run = [], []
+    for r in rows:
+        if r.get(key, r["train_acc"]) >= top:
+            run.append(r)
+            if len(run) > len(best_run):
+                best_run = list(run)
+        else:
+            run = []
+    return best_run[len(best_run) // 2] if best_run else None
+
+
 def cosine(a: ProbeResult, b: ProbeResult) -> float:
     """Cosine between two probe directions -- the Phase 3.3 truth-vs-verdict control."""
     return float(_unit(a.direction) @ _unit(b.direction))
