@@ -55,6 +55,33 @@ case "$MODEL" in
     fi ;;
 esac
 
+say "python"
+python -c 'import sys; print(sys.version)'
+python - <<'EOF'
+import sys
+if sys.version_info < (3, 9):
+    sys.exit(f"STOP: need Python >= 3.9, got {sys.version_info[:2]}")
+print("python version ok")
+EOF
+
+say "model cache location"
+# Lambda instances do not survive termination, so a 65GB download repeats every
+# time unless the HF cache lives on an attached persistent filesystem. If one is
+# mounted, point HF_HOME at it.
+if [[ -n "${HF_HOME:-}" ]]; then
+  echo "HF_HOME=$HF_HOME"
+else
+  FS_MOUNT="$(find /home/ubuntu -maxdepth 1 -type d -not -name ubuntu -not -name '.*' 2>/dev/null | head -1)"
+  if [[ -n "$FS_MOUNT" && -w "$FS_MOUNT" ]]; then
+    echo "A persistent filesystem may be mounted at $FS_MOUNT."
+    echo "To avoid re-downloading ~65GB after every termination, run:"
+    echo "  echo 'export HF_HOME=$FS_MOUNT/hf' >> ~/.bashrc && source ~/.bashrc"
+  else
+    echo "HF_HOME unset and no persistent filesystem detected: weights will be"
+    echo "re-downloaded (~65GB for a 32B) if this instance is terminated."
+  fi
+fi
+
 say "torch that ships with the image (do not replace it)"
 TORCH_BEFORE="$(python -c 'import torch; print(torch.__version__)')"
 echo "torch $TORCH_BEFORE"
