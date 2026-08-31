@@ -616,3 +616,35 @@ Two readings, not separated:
 (2) is close to the project's hypothesis, which is exactly why it should not be
 claimed from this test -- it was not designed to support it, n is 18, and (1) is
 unexcluded. Flagged as worth a clean experiment if time allows, not as a result.
+
+## Phase 1 — judge harness
+
+I claimed earlier that Phase 1 was "mostly already built" and listed all four of its
+deliverables as done. Audited against the code, that was too generous: two were
+missing outright and a third was half-done.
+
+| Phase 1 asks for | actual state | now |
+| --- | --- | --- |
+| `(verdict, activations)` from the same model | two separate calls, coupled only by convention | `Judge.evaluate` |
+| layer sweep, "cache every 4th layer" | swept all layers; no stride option | `Judge(layer_stride=N)` |
+| truncation through round k | built and plumbed, never run through `Judge` | verified end to end |
+| serialise to disk, "do not hold a corpus in memory" | gates accumulate in a list and stack at the end | `ActivationStore` |
+
+Three notes on the fixes:
+
+- **`Judge.evaluate`** makes the coupling structural rather than conventional: one
+  entry point owns both halves. The activations are still from different forward
+  passes than the verdict — the contrast-pair method appends a different answer to
+  each prompt, so one pass cannot produce both. Same model instance, same weights,
+  same layout, which is what the doc's requirement protects.
+- **`layer_stride`** always keeps the final layer regardless of stride. A stride that
+  silently dropped it would lose the layer most likely to carry the verdict.
+- **`ActivationStore`** writes one `.npy` per array plus a JSON manifest. Sizing the
+  real thing: 1.3 MB per activation at 64 x 5120, 12 per debate in Phase 5, so ~16 MB
+  per debate and ~9 GB across 600. That fits on disk comfortably and in RAM only
+  awkwardly — and is lost entirely if the run dies at debate 500. `has()` makes a
+  rerun resumable, which matters more than the memory saving.
+
+Phase 0's gates were left on the in-memory path deliberately; ten transcripts do not
+need streaming, and rewriting working gate code the day before Phase 2 is not a good
+trade.

@@ -210,11 +210,29 @@ def resolve_dtype(device: str) -> torch.dtype:
     return torch.float16 if device.startswith("cuda") else torch.float32
 
 
+@dataclass
+class JudgeOutput:
+    """One debate's verdict and activations, produced by a single Judge."""
+
+    transcript_id: str
+    verdict: CounterbalancedVerdict
+    activations: dict  # {"forward"|"reverse": {"gold"|"distractor": (n_layers, d)}}
+    layers: list[int]  # which model layers the rows correspond to
+    model_id: str
+
+    def order_averaged(self) -> dict:
+        """`{"gold": ..., "distractor": ...}` averaged over presentation order."""
+        import numpy as np
+        return {cls: (self.activations["forward"][cls]
+                      + self.activations["reverse"][cls]) / 2
+                for cls in ("gold", "distractor")}
+
+
 class Judge:
     """Wraps a causal LM as a debate judge with residual-stream access."""
 
     def __init__(self, model_id: str, *, device: str | None = None, dtype=None,
-                 seed: int = 0):
+                 seed: int = 0, layer_stride: int = 1):
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         self.model_id = model_id
@@ -235,6 +253,15 @@ class Judge:
         self.layers = self._decoder_layers()
         self.n_layers = len(self.layers)
         self.d_model = int(self.model.config.hidden_size)
+        # Which layers get cached. The design doc suggests every 4th to control cache
+        # size; stride 1 keeps everything, which is what Phase 0 wants. The last layer
+        # is always included -- it is the one most likely to carry the verdict, and a
+        # stride that skipped it would be a silent loss.
+        self.layer_stride = max(1, int(layer_stride))
+        cached = list(range(0, self.n_layers, self.layer_stride))
+        if cached[-1] != self.n_layers - 1:
+            cached.append(self.n_layers - 1)
+        self.cached_layers = cached
 
     def _decoder_layers(self):
         for attr in ("model.layers", "transformer.h", "model.decoder.layers"):
@@ -377,11 +404,11 @@ class Judge:
         store = {}
         with self._residual_hooks(store):
             out = self.model(**enc, output_hidden_states=return_hidden_states)
-        acts = torch.stack([store[i] for i in range(self.n_layers)]).numpy()
+        acts = torch.stack([store[i] for i in self.cached_layers]).numpy()
         if return_hidden_states:
             # hidden_states[0] is the embedding output, so layer i == hs[i + 1].
-            hs = torch.stack([h[0, -1, :].detach().float().cpu()
-                              for h in out.hidden_states[1:]]).numpy()
+            hs = torch.stack([out.hidden_states[i + 1][0, -1, :].detach().float().cpu()
+                              for i in self.cached_layers]).numpy()
             return acts, hs
         return acts
 
@@ -404,6 +431,28 @@ class Judge:
             "forward": self.contrast_activations(transcript, swap=False, **kw),
             "reverse": self.contrast_activations(transcript, swap=True, **kw),
         }
+
+    def evaluate(self, transcript: Transcript, **kw) -> "JudgeOutput":
+        """Verdict and contrast activations for one debate, from one model.
+
+        The design doc calls this coupling non-negotiable: the knows-versus-says gap
+        is meaningless if the verdict and the activations come from different models.
+        Two callers each reaching for `verdict_pair` and `contrast_activations_pair`
+        would satisfy that only by convention. This makes it structural -- there is
+        one entry point and it owns both halves.
+
+        Note the activations are necessarily from different forward passes than the
+        verdict: the contrast-pair method appends a different answer to each prompt,
+        so a single pass cannot produce both. Same model instance, same weights, same
+        options layout -- which is what the requirement is protecting.
+        """
+        return JudgeOutput(
+            transcript_id=transcript.transcript_id,
+            verdict=self.verdict_pair(transcript, **kw),
+            activations=self.contrast_activations_pair(transcript, **kw),
+            layers=list(self.cached_layers),
+            model_id=self.model_id,
+        )
 
     def n_prompt_tokens(self, prompt: str) -> int:
         return len(self.tokenizer.encode(prompt, add_special_tokens=False))

@@ -15,6 +15,7 @@ src/judgeprobe/
   transcripts.py  Transcript/Turn types, round truncation, Phase 0 templated generator
   judge.py        Judge: verdict production + residual-stream capture from one model
   probes.py       mass-mean probe (primary), logistic (secondary), layer sweep, LOO
+  store.py        incremental on-disk activation cache (streaming, resumable)
 scripts/
   check_env.py                 environment check -- run this first on the GH200
   phase0_build_transcripts.py  Phase 0.1: ten throwaway transcripts
