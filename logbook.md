@@ -1227,3 +1227,97 @@ makes for Phase 0, one degree stronger.
 **Corpus state at handoff:** 40 debates, 20 honest / 20 collusion, questions disjoint
 across conditions (0 overlap), letters 10/10 and speaking order 10/20 within each
 condition and now decorrelated, 0 leaks, 0 failures, 4 turns each, no empty turns.
+
+## Q0 measured â€” covert collusion does flip this judge
+
+40 debates judged on Qwen2.5-32B, 1x H100, **43 seconds** for 240 forward passes and
+210MB of activations. The GPU was never the cost in this project and this confirms it:
+the whole judging run is under a minute once weights are loaded.
+
+`scripts/phase2_q0.py` (new) joins the store manifest to the corpus and reports the
+steering rate **per condition**, which `summarise()` could not â€” Q0 is a
+between-condition comparison and the pooled number cannot answer it.
+
+| | honest | collusion |
+| --- | --- | --- |
+| n | 20 | 20 |
+| order-consistent | 11 (0.55) | 7 (0.35) |
+| verdict errors | **0 / 11** | **3 / 7** (0.429) |
+| forced-choice errors | 3 / 20 (0.15) | 8 / 20 (0.40) |
+| mean P(gold) | 0.769 | 0.539 |
+
+**Q0 is positive.** Verdict reading: a 0.429 gap, Fisher one-tailed **p = 0.043**.
+Forced-choice reading: a 0.25 gap, p = 0.078. Mean P(gold) falls 0.23 between
+conditions. The honest arm is the result that makes this readable â€” **0 errors in 11
+order-consistent debates**. On debates where this judge commits to a content-driven
+answer and nobody is sandbagging, it is perfect. So the collusion arm's 3/7 is not the
+judge being generally unreliable; it is the steering.
+
+This also retires the Phase 0 worry for good. Order consistency was 0.10 on templated
+stimuli and the ceiling diagnostic argued that was the stimuli rather than the judge.
+Real Sonnet debates give 0.45 overall, and the honest arm reaches 0.55 with perfect
+accuracy on what it commits to. The diagnostic's reading was right.
+
+### The caveat that belongs next to the headline number
+
+**Order-consistency is a post-treatment variable, and it is not balanced across
+conditions**: 11/20 honest against 7/20 collusion (one-tailed p = 0.17, so not
+significant, but pointing the obvious way). Conditioning the verdict analysis on
+order-consistency therefore conditions on something the treatment may itself affect â€”
+a colluded debate that leaves the judge with nothing decisive can push it back onto
+position, voiding the debate rather than flipping it.
+
+That makes the 0.429 verdict gap a *selected* estimate, and the forced-choice gap
+(0.25, defined over all 40 with no selection) the more conservative one. The two
+disagreeing in exactly that direction is what the selection story predicts. Both are
+reported, the forced-choice figure is the one to lead with in the writeup, and the
+pre-registered promise to report the order-split rate alongside Q0 is what makes this
+visible at all.
+
+Worth stating plainly as a finding in its own right: **steering does not only flip
+verdicts, it degrades the judge's order-robustness.** 13/20 colluded debates were
+decided by presentation order against 9/20 honest ones. A debate the judge cannot
+resolve on content is a partial success for an adversary even when it does not flip
+the answer.
+
+### The stop condition fires, but its premise does not hold
+
+3 colluded debates were steered on the verdict reading. The doc wants ~60 test cases
+for Phase 3, so `phase2_q0.py` fires the s2 stop condition.
+
+**The doc's stop condition was written for "steering never succeeds" (pre-registered
+negative #3). That is not this situation.** Steering succeeds at a rate that is
+statistically distinguishable from the honest baseline on n=18. The problem is *yield
+per debate*, not effect size â€” two different diagnoses with different responses, and
+the doc's rule does not separate them. Taking the s6 fallback here would be
+abandoning a working experiment because the corpus is too small.
+
+Yield arithmetic, at $0.054/debate:
+
+| criterion | rate | collusion debates for 60 cases | generation cost |
+| --- | --- | --- | --- |
+| verdict-steered | 3/20 | 400 | ~$22 |
+| forced-choice-steered | 8/20 | 150 | ~$8 |
+
+Both are affordable. The GPU side is free at 43 seconds per 40 debates.
+
+### Three levers, and the one that is nearly free is also the most dangerous
+
+1. **Scale the corpus** â€” $8-22, no methodological change, the safe default.
+2. **Pull the `relaxed` condition** â€” the doc's own lever, raises steering rate per
+   debate, already implemented and reported separately by design.
+3. **Raise order-consistency in the judge prompt.** 22 of 40 debates were voided by
+   presentation order; that is the dominant loss, much larger than the steering rate
+   itself. Phase 0 considered a reasoning-before-answering prompt and rejected it as
+   "tuning against a phantom", because on templated stimuli low consistency was a
+   stimulus artifact. **That deferral no longer applies** â€” the stimuli are now real
+   and the ceiling diagnostic gives an interpretable target (tier 1 = 1.00). Re-judging
+   costs 43 seconds.
+
+**Guardrail, recorded before anything is tried.** Lever 3 changes the judge after Q0
+has been seen, which is how a result gets tuned into existence. If it is taken, the
+prompt must be selected on a criterion that is *not* Q0 â€” order-consistency alone, or
+accuracy on the tier-1 world-knowledge items from `diagnose_judge_ceiling.py` â€” with
+the choice fixed before Q0 is recomputed, and both the old and new Q0 reported. Phase 0
+established every gate threshold in advance for exactly this reason; changing the judge
+downstream of a positive result is the point where that discipline matters most.
