@@ -79,7 +79,7 @@ class Transcript:
 
 
 def assign_balanced_letters(transcripts: list[Transcript], seed: int = 0) -> list[Transcript]:
-    """Assign gold's letter so it is exactly balanced *within each condition*.
+    """Assign gold's letter, balanced within condition *and* within speaking order.
 
     Hashing each question independently balances only in expectation. At Phase 0
     sizes that is not good enough: the first smoke run drew gold-is-A in 5/5 clean
@@ -88,16 +88,26 @@ def assign_balanced_letters(transcripts: list[Transcript], seed: int = 0) -> lis
 
     Stratifying by condition makes that specific confound structurally impossible.
     It does not address position bias itself; counterbalancing does that.
+
+    Stratifying additionally by `gold_speaks_first` keeps the project's two nuisance
+    factors *decorrelated*, which balancing each one marginally does not: the first
+    Phase 2 corpus came out balanced 10/10 on both and still put gold-is-A with
+    gold-speaks-first in 7 of 10 collusion debates (phi = 0.40), aligning option
+    letter with speaker label. Phase 0 recorded decorrelation as a requirement and
+    checked it by hand; this makes it structural.
     """
     rng = random.Random(seed)
-    by_condition: dict[str, list[Transcript]] = {}
+    strata: dict[tuple, list[Transcript]] = {}
     for t in transcripts:
-        by_condition.setdefault(t.condition, []).append(t)
-    for condition in sorted(by_condition):
-        group = sorted(by_condition[condition], key=lambda t: t.transcript_id)
+        strata.setdefault((t.condition, bool(t.meta.get("gold_speaks_first", True))),
+                          []).append(t)
+    # Alternate the starting letter across strata so odd-sized cells cannot all round
+    # the same way and reintroduce a marginal imbalance.
+    for i, key in enumerate(sorted(strata, key=str)):
+        group = sorted(strata[key], key=lambda t: t.transcript_id)
         rng.shuffle(group)
-        for i, t in enumerate(group):
-            t.gold_letter = "A" if i % 2 == 0 else "B"
+        for j, t in enumerate(group):
+            t.gold_letter = "A" if (j + i) % 2 == 0 else "B"
     return transcripts
 
 

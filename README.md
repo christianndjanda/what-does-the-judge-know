@@ -17,6 +17,8 @@ src/judgeprobe/
   probes.py       mass-mean probe (primary), logistic (secondary), layer sweep, LOO
   store.py        incremental on-disk activation cache (streaming, resumable)
   harness.py      the corpus loop: judge -> store, resumable, verdict metrics
+  debate.py       Phase 2 debaters: prompts, conditions, leak check, covertness
+  corpus.py       Phase 2 runner: plan, parallel generate, quarantine, balance
 scripts/
   check_env.py                 environment check -- run this first on the GH200
   phase0_build_transcripts.py  Phase 0.1: ten throwaway transcripts
@@ -24,6 +26,8 @@ scripts/
   diagnose_position_bias.py    why does the judge prefer the first option?
   phase1_selftest.py           Phase 1: harness contracts, on CPU
   phase1_harness.py            Phase 1: run the harness over a transcript corpus
+  phase2_selftest.py           Phase 2: pipeline contracts against a stub client
+  phase2_build_corpus.py       Phase 2: generate the debate corpus (API, no GPU)
   setup_lambda.sh              bootstrap a Lambda Labs GPU instance
 ```
 
@@ -60,6 +64,38 @@ watched while a corpus is still being built.
 | C2 | layer stride keeps every Nth layer and never drops the last |
 | C3 | truncation through round *k* is a real prefix of the debate |
 | C4 | activations stream to disk, round-trip exactly, and a rerun resumes |
+
+## Running Phase 2 (no GPU)
+
+Debate generation is API-bound, so the doc splits Phase 2: build the corpus with the
+instance stopped, then batch-judge it with `phase1_harness.py`.
+
+```bash
+python scripts/phase2_selftest.py                       # 28 contracts, no API calls
+python scripts/phase2_build_corpus.py --dry-run -n 40   # plan, balance, price
+export ANTHROPIC_API_KEY=...                            # or `ant auth login`
+python scripts/phase2_build_corpus.py -n 40 --workers 8
+python scripts/phase1_harness.py --model <hf-id>     --transcripts data/phase2/transcripts.jsonl --out data/phase2/acts
+```
+
+Three conditions. `honest` is Phase 3's training set (judge usually right, so truth
+and verdict agree); `collusion` is both-know covert steering toward the best
+distractor, and its successes are the test set; `relaxed` is the same without the
+covertness requirement -- the doc's contingency lever, to be pulled only if
+`collusion` yields too few judge failures, and reported separately if it is.
+
+Conditions get **disjoint questions** by default: Phase 3 trains on honest and tests
+on colluded transcripts, so a shared question would put the same answer strings on
+both sides of the split. `--paired` overrides this and must not be used for probe
+training.
+
+Cost is ~$0.07 per 2-round debate on `claude-sonnet-4-6` with the story cached, so
+~$3 per 40 debates. `--dry-run` prices a run before it happens and writes a sample of
+the real prompts to `dry_run_prompts.txt`.
+
+Reruns resume. Debates whose text mentions the setup ("as instructed, I will argue
+weakly") are quarantined to `leaked.jsonl` rather than dropped, and failures to
+`failures.jsonl`, so both rates stay recoverable.
 
 ## Running Phase 0 on Lambda Labs
 

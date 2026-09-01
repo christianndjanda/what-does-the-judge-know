@@ -11,6 +11,8 @@ DATA_DIR = Path(os.environ.get("JUDGE_PROBE_DATA", REPO_ROOT / "data"))
 LOGS_DIR = Path(os.environ.get("JUDGE_PROBE_LOGS", REPO_ROOT / "logs"))
 
 PHASE0_DIR = DATA_DIR / "phase0"
+PHASE1_DIR = DATA_DIR / "phase1"
+PHASE2_DIR = DATA_DIR / "phase2"
 
 # The design doc (s0.1) planned two stages: 8B for Phase 0 plumbing, then a
 # ~27-32B judge for Phases 3-5. We run Phase 0 directly on the 32B instead.
@@ -36,6 +38,13 @@ JUDGE_MODEL_ALT = "google/gemma-2-27b-it"
 PHASE0_ARTICLE_CHARS = int(os.environ.get("PHASE0_ARTICLE_CHARS", "4000"))
 PHASE0_N_TRANSCRIPTS = 10  # 5 misleading, 5 clean (design doc s0.1)
 
+# Debaters stay on the API (design doc s0.2); only the judge is open weights.
+# The doc names claude-sonnet-4-6. Overridable -- claude-sonnet-5 is cheaper per
+# token ($2/$10 against $3/$15) but is a different debater, so switching mid-corpus
+# would make the transcripts non-comparable. Pick one before Phase 2 starts.
+DEBATER_MODEL = os.environ.get("DEBATER_MODEL", "claude-sonnet-4-6")
+PHASE2_ROUNDS = int(os.environ.get("PHASE2_ROUNDS", "2"))  # doc s2: 2-3 rounds
+
 SEED = 20260904
 
 
@@ -58,5 +67,5 @@ def quality_dir() -> Path:
 
 
 def ensure_dirs() -> None:
-    for d in (DATA_DIR, LOGS_DIR, PHASE0_DIR):
+    for d in (DATA_DIR, LOGS_DIR, PHASE0_DIR, PHASE1_DIR, PHASE2_DIR):
         d.mkdir(parents=True, exist_ok=True)

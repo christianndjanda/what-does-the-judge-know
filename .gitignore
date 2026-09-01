@@ -4,11 +4,17 @@ __pycache__/
 venv/
 .env
 
-# Data and artefacts are regenerable, and large -- with one exception. The Phase 0
+# Data and artefacts are regenerable, and large -- with two exceptions. The Phase 0
 # result files (gate reports, diagnostics, the transcripts they were computed on)
 # are the evidence behind the writeup, they are small, and they cannot be
 # reproduced once the GPU instance is terminated. So they are tracked; the
 # activation caches, which are large and regenerable, are not.
+#
+# The Phase 2 corpus is tracked for the same reason and one stronger: it is 210KB,
+# it cost $2.15 of API spend, and it was generated at temperature 1.0, so it is not
+# reproducible even by rerunning the same command with the same seed. Losing it
+# would mean regenerating a *different* corpus, which would invalidate every number
+# already computed against this one.
 data/*
 !data/phase0/
 data/phase0/*
@@ -18,6 +24,10 @@ data/phase0/*
 data/phase0/archive/*
 !data/phase0/archive/*.json
 !data/phase0/archive/*.md
+!data/phase2/
+data/phase2/*
+!data/phase2/*.json
+!data/phase2/*.jsonl
 logs/
 out/
 
