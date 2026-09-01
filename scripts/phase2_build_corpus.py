@@ -105,6 +105,9 @@ def main() -> int:
     ap.add_argument("--no-classify", action="store_true",
                     help="skip the covertness side-classifier (one call per debate)")
     ap.add_argument("--no-resume", action="store_true")
+    ap.add_argument("--retry-failed", action="store_true",
+                    help="re-attempt debates in failures.jsonl (use after fixing a "
+                         "global fault such as bad credentials)")
     ap.add_argument("--limit", type=int, default=None, help="cap debates this run")
     ap.add_argument("--dry-run", action="store_true", help="plan and price, no calls")
     ap.add_argument("--finalise-only", action="store_true",
@@ -151,7 +154,7 @@ def main() -> int:
           f"{args.workers} workers, model {cfg.model}")
     client = make_client()
     report = build_corpus(client, specs, writer, cfg=cfg, workers=args.workers,
-                          resume=not args.no_resume)
+                          resume=not args.no_resume, retry_failed=args.retry_failed)
     report["balance"] = finalise(writer, seed=args.seed)
 
     path = args.out / "generation_report.json"

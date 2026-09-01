@@ -117,12 +117,19 @@ class CorpusWriter:
         self.failures = self.dir / "failures.jsonl"
         self._lock = threading.Lock()
 
-    def done_ids(self) -> set[str]:
-        """Ids already written -- to transcripts *or* quarantine, so reruns settle."""
+    def done_ids(self, include_failures: bool = True) -> set[str]:
+        """Ids already written -- to transcripts *or* quarantine, so reruns settle.
+
+        `include_failures=False` re-attempts previously failed debates. Needed when
+        the failures were caused by something global rather than by the debates
+        themselves -- a bad key quarantines the entire corpus, and those ids would
+        otherwise be skipped forever.
+        """
+        sources = [(self.transcripts, "transcript_id"), (self.leaked, "transcript_id")]
+        if include_failures:
+            sources.append((self.failures, "transcript_id"))
         ids: set[str] = set()
-        for path, key in ((self.transcripts, "transcript_id"),
-                          (self.leaked, "transcript_id"),
-                          (self.failures, "transcript_id")):
+        for path, key in sources:
             if path.exists():
                 with path.open(encoding="utf-8") as f:
                     for line in f:
@@ -160,11 +167,21 @@ def _run_one(client, spec: DebateSpec, cfg: DebateConfig):
     return result
 
 
+#: Abort a run after this many failures with no successes. A per-debate failure is
+#: worth recording and moving on from -- that is what the quarantine is for. A
+#: *global* failure (bad credentials, wrong model id, no network) fails every debate
+#: identically, and because `done_ids` counts failures as done so reruns settle, an
+#: unchecked run writes one quarantine entry per spec and permanently poisons the
+#: resume state. That happened: a run with a placeholder API key wrote 527
+#: AuthenticationErrors, after which the real run found "0 to go".
+FAIL_FAST_THRESHOLD = 5
+
+
 def build_corpus(client, specs: list[DebateSpec], writer: CorpusWriter, *,
                  cfg: DebateConfig, workers: int = 8, resume: bool = True,
-                 log=print) -> dict:
+                 retry_failed: bool = False, log=print) -> dict:
     """Generate every spec, in parallel, appending as results land."""
-    done = writer.done_ids() if resume else set()
+    done = writer.done_ids(include_failures=not retry_failed) if resume else set()
     todo = [s for s in specs if s.transcript_id not in done]
     if done:
         log(f"resuming: {len(done)} already written, {len(todo)} to go")
@@ -173,6 +190,7 @@ def build_corpus(client, specs: list[DebateSpec], writer: CorpusWriter, *,
     counts = {"ok": 0, "leaked": 0, "failed": 0}
     covert = {"HONEST": 0, "THROWN": 0, "unknown": 0}
     started = time.time()
+    aborted = None
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(_run_one, client, s, cfg): s for s in todo}
@@ -208,8 +226,22 @@ def build_corpus(client, specs: list[DebateSpec], writer: CorpusWriter, *,
                 f"${total.cost(cfg.model):.2f} so far  "
                 f"eta {(elapsed / i * (len(todo) - i)) / 60:.1f}m")
 
+            # Nothing has succeeded and failures are piling up: this is a global
+            # fault, not a run of unlucky debates. Stop before quarantining the
+            # whole corpus.
+            if counts["ok"] == 0 and counts["failed"] >= FAIL_FAST_THRESHOLD:
+                aborted = (f"{counts['failed']} failures, 0 successes -- stopping. "
+                           f"This looks like a global fault (credentials, model id, "
+                           f"network) rather than bad debates. Fix it, then rerun "
+                           f"with --retry-failed to clear the quarantined ids.")
+                log(f"\nABORTED: {aborted}")
+                for f in futures:
+                    f.cancel()
+                break
+
     return {
         "model": cfg.model,
+        "aborted": aborted,
         "n_planned": len(specs),
         "n_attempted": len(todo),
         "counts": counts,

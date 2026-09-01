@@ -172,6 +172,7 @@
   "pass": true,
   "run": {
     "model": "claude-sonnet-4-6",
+    "aborted": null,
     "n_planned": 8,
     "n_attempted": 8,
     "counts": {
