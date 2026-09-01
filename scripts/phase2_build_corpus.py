@@ -33,7 +33,7 @@ from judgeprobe.corpus import CorpusWriter, build_corpus, finalise, plan_corpus 
 from judgeprobe.debate import (  # noqa: E402
     DebateConfig, debater_system, estimate_debate_cost, make_client, turn_prompt,
 )
-from judgeprobe.quality import sample_questions  # noqa: E402
+from judgeprobe.quality import articles_available, sample_by_article  # noqa: E402
 from judgeprobe.transcripts import GOLD_SIDE  # noqa: E402
 
 
@@ -85,12 +85,17 @@ def dry_run(specs, cfg: DebateConfig, out_dir: Path) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("-n", type=int, default=40, help="questions to sample")
+    ap.add_argument("-n", type=int, default=40,
+                    help="articles to sample (debates = n * --per-article)")
+    ap.add_argument("--per-article", type=int, default=1,
+                    help="questions per article; raising it extends an existing "
+                         "corpus rather than reshuffling it")
     ap.add_argument("--conditions", default="honest,collusion",
                     help="comma-separated: honest, collusion, relaxed")
     ap.add_argument("--rounds", type=int, default=config.PHASE2_ROUNDS)
     ap.add_argument("--model", default=config.DEBATER_MODEL)
-    ap.add_argument("--split", default="dev")
+    ap.add_argument("--split", default="dev,train",
+                    help="comma-separated QuALITY splits; test has no public gold")
     ap.add_argument("--seed", type=int, default=config.SEED)
     ap.add_argument("--out", type=Path, default=config.PHASE2_DIR)
     ap.add_argument("--workers", type=int, default=8)
@@ -116,9 +121,16 @@ def main() -> int:
     cfg = DebateConfig(model=args.model, n_rounds=args.rounds, words_per_turn=args.words,
                        classify=not args.no_classify)
     conditions = tuple(c.strip() for c in args.conditions.split(","))
-    questions = sample_questions(args.n, split=args.split, seed=args.seed)
-    if len(questions) < args.n:
-        print(f"WARNING: only {len(questions)} eligible questions in {args.split}")
+    splits = tuple(s.strip() for s in args.split.split(","))
+    available = articles_available(splits)
+    if args.n > available:
+        print(f"WARNING: asked for {args.n} articles, only {available} pass the "
+              f"filter in {'+'.join(splits)} -- sampling {available}")
+    questions = sample_by_article(args.n, splits=splits,
+                                  per_article=args.per_article, seed=args.seed)
+    n_articles = len({q.article_id for q in questions})
+    print(f"{len(questions)} questions from {n_articles} articles "
+          f"({'+'.join(splits)}, {args.per_article} per article)")
     specs = plan_corpus(questions, conditions, seed=args.seed, paired=args.paired)
     if args.limit is not None:
         specs = specs[: args.limit]

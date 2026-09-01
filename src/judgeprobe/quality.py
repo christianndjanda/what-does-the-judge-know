@@ -122,7 +122,11 @@ def iter_questions(
 
 
 def sample_questions(n: int, split: str = "dev", seed: int = config.SEED, **kw) -> list[QualityQuestion]:
-    """Deterministically sample `n` questions, at most one per article."""
+    """Deterministically sample `n` questions, at most one per article.
+
+    Superseded by `sample_by_article` for Phase 2, and kept because the first
+    40-debate corpus was drawn with it.
+    """
     import random
 
     by_article: dict[str, list[QualityQuestion]] = {}
@@ -132,3 +136,57 @@ def sample_questions(n: int, split: str = "dev", seed: int = config.SEED, **kw) 
     article_ids = sorted(by_article)
     rng.shuffle(article_ids)
     return [rng.choice(by_article[a]) for a in article_ids[:n]]
+
+
+def articles_available(splits=("dev", "train"), **kw) -> int:
+    """How many distinct articles pass the filter -- the ceiling on `n_articles`."""
+    return len({q.article_id for s in splits for q in iter_questions(s, **kw)})
+
+
+def sample_by_article(
+    n_articles: int,
+    *,
+    splits=("dev", "train"),
+    per_article: int = 1,
+    seed: int = config.SEED,
+    **kw,
+) -> list[QualityQuestion]:
+    """Sample `n_articles` articles and `per_article` questions from each.
+
+    `sample_questions` takes one question per article, which caps a corpus at the
+    number of articles: 115 on dev, 149 on train. Reaching a useful number of
+    *steered* debates needs more than that (see logbook), and QuALITY has ~12
+    eligible questions per article going unused.
+
+    Two properties this guarantees, both load-bearing:
+
+    * **Deterministic and extensible in both directions.** Articles are drawn from a
+      seeded shuffle and questions within an article are taken in `question_id` order,
+      so raising `per_article` or `n_articles` *appends* to the previous selection
+      instead of reshuffling it. A corpus built at k=2 extends to k=4 by generating
+      the two new questions per article; the existing debates keep their ids and are
+      skipped by resume.
+    * **Article grouping survives.** Callers get a flat list, but every question
+      carries `article_id`, which is what lets `plan_corpus` keep whole articles on
+      one side of the honest/collusion split. With one question per article that was
+      automatic; with several it has to be enforced, or the same story lands in both
+      the probe's training and test sets.
+
+    `test` is excluded from the default splits deliberately: public QuALITY test ships
+    without gold labels.
+    """
+    import random
+
+    by_article: dict[str, list[QualityQuestion]] = {}
+    for split in splits:
+        for q in iter_questions(split, **kw):
+            by_article.setdefault(q.article_id, []).append(q)
+
+    article_ids = sorted(by_article)
+    random.Random(seed).shuffle(article_ids)
+
+    out: list[QualityQuestion] = []
+    for aid in article_ids[:n_articles]:
+        questions = sorted(by_article[aid], key=lambda q: q.question_id)
+        out.extend(questions[:per_article])
+    return out

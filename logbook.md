@@ -1321,3 +1321,84 @@ accuracy on the tier-1 world-knowledge items from `diagnose_judge_ceiling.py` â
 the choice fixed before Q0 is recomputed, and both the old and new Q0 reported. Phase 0
 established every gate threshold in advance for exactly this reason; changing the judge
 downstream of a positive result is the point where that discipline matters most.
+
+### Corpus scaling â€” article-stratified sampling, and a ceiling that was not in the plan
+
+Q0 gave 3 steered cases against the doc's ~60. Before spending on more debates, checked
+whether more debates were even reachable. They were not:
+
+`sample_questions` takes **at most one question per article**, so `-n` is capped by
+article count, not question count â€” 115 on dev, 149 on train, 264 combined. `-n 200`
+would have returned 115 debates with a warning. Scaling to 60 steered cases needs ~400
+collusion debates, which the sampler could not produce at any price. QuALITY has ~12
+eligible questions per article and the corpus was using one of them.
+
+**Change: `sample_by_article(n_articles, splits, per_article)`.** Articles are drawn
+from a seeded shuffle; questions within an article are taken in `question_id` order.
+`plan_corpus` now assigns **whole articles** to conditions rather than individual
+questions.
+
+The article-level assignment is the load-bearing part. Phase 3 trains on honest and
+tests on colluded transcripts, so a story appearing in both halves would let a probe
+separate the test pairs by recognising the story rather than by carrying a truth
+representation. With one question per article, question-disjointness delivered
+article-disjointness for free; with several, it has to be enforced explicitly.
+
+**A confound headed off rather than discovered.** Speaking order is now balanced within
+*article* as well as within condition. Marginal balance was not enough for the option
+letter (phi = 0.40 against speaking order, caught in preflight last session) and the
+same trap was open here: if a whole article's debates all had gold speaking first,
+speaking order would track story identity â€” the very thing the article-level split
+exists to keep away from the probe. Sixth member of the family, first one anticipated
+instead of found afterwards.
+
+**A bug the verification caught: the corpus was not extensible in k.** The plan was to
+build at k=2 and extend to k=4 if yield disappointed. But `balanced_flags(k)` shuffles,
+so `balanced_flags(2)` and `balanced_flags(4)` disagree on the first two entries â€” only
+397/528 debates survived a k=2 â†’ k=4 extension unchanged, and the other 131 would have
+been regenerated at full price under a *different speaking order*, quietly making the
+two halves of the corpus non-comparable. Fixed by deriving the flag from (article index,
+question index) alone, never from how many questions were drawn: strict alternation
+within an article, alternating start across articles. Exactly balanced for even k,
+balanced overall for odd k, stable as k grows. Now 528/528 survive.
+
+**Verified before any spend**, at n_articles=264, k=2 and k=4: articles spanning both
+conditions 0; gold speaks first 132/264 per condition; articles whose debates all share
+one speaking order 0; k=2 questions a strict subset of k=4; 28/28 Phase 2 self-test.
+
+**Decisions fixed now, before any of the new data exists.**
+
+* **k=2 to start** (528 debates), extensible to 4.
+* **dev + train**, 264 articles. QuALITY's train/dev/test division carries no weight
+  here â€” nothing is trained on QuALITY, the judge is frozen and the probe trains on
+  activations â€” so the splits are just buckets of articles. `test` is excluded because
+  public QuALITY test ships without gold labels.
+* **Verdict criterion is primary** for defining a steered debate: both presentation
+  orders agree on the distractor. Forced choice (sign of order-averaged P(gold),
+  defined for every debate, ~40% yield against the verdict criterion's ~15%) is the
+  pre-registered secondary and gets reported alongside whatever either shows. Fixing
+  this in advance matters because the two give different test sets, and choosing after
+  seeing which flatters the probe is the garden of forking paths.
+* **Phase 3 cross-validation groups by article**, not by contrast pair. Same reasoning
+  as Phase 0's leave-one-pair-out, one level up: holding out a debate while its
+  article-siblings stay in training leaks the story.
+* **No `relaxed` condition.** It exists to buy steering power by dropping the
+  covertness requirement â€” but the covertness result says covertness is already free
+  here, since no auditor variant could separate colluded from honest transcripts. There
+  is no detectability cost for `relaxed` to refund.
+
+**Power, computed rather than asserted.** The earlier worry about clustering was
+directionally right and quantitatively overblown for this design. Because the steered
+outcome is *rare* (~15%), the test set barely clusters even when the corpus does: at
+k=4, expected steered cases per collusion article is 0.61, so most articles contribute
+zero or one. Effective n against raw n is 34/34 at k=4 and 66/69 at k=8 (ICC 0.25). The
+clustering penalty lands almost entirely on the training set, which only needs to
+estimate a mean direction. **Power is essentially unchanged for k <= 4.**
+
+At k=2, 264 articles: 528 debates, ~264 collusion, ~40 steered cases expected. A probe
+would need 26/40 correct to clear p < 0.05 against chance, against 8/9 at the current
+n=9-equivalent â€” the point of scaling is tolerance for an imperfect probe, not
+significance for a perfect one.
+
+**Cost.** Estimated $40.33 for 528 debates. The estimator ran 27% high last time ($2.95
+against $2.15 actual), so expect ~$29.

@@ -67,16 +67,42 @@ def plan_corpus(questions: list[QualityQuestion], conditions=("honest", "collusi
     if paired:
         groups = {c: list(questions) for c in conditions}
     else:
-        for i, q in enumerate(questions):
-            groups.setdefault(conditions[i % len(conditions)], []).append(q)
+        # Assign whole *articles*, not individual questions. With one question per
+        # article the two are the same thing; with several, splitting an article
+        # across conditions would put the same story in both the probe's training
+        # and test sets, and a probe could separate the test pairs by recognising
+        # the story rather than by carrying any truth representation.
+        by_article: dict[str, list[QualityQuestion]] = {}
+        for q in questions:
+            by_article.setdefault(q.article_id, []).append(q)
+        for i, article_id in enumerate(sorted(by_article)):
+            groups.setdefault(conditions[i % len(conditions)], []).extend(
+                by_article[article_id])
 
     specs: list[DebateSpec] = []
     for offset, condition in enumerate(conditions):
         group = groups.get(condition, [])
         # Exactly half of each condition has the gold side speaking first -- balanced,
         # not merely random, because at Phase 0 sizes "random" delivered 5/5.
-        flags = balanced_flags(len(group), seed=seed + offset)
-        specs += [DebateSpec(q, condition, f) for q, f in zip(group, flags)]
+        #
+        # Balanced *within article* as well, for the reason the option letter had to
+        # be: balancing a nuisance factor marginally leaves it free to correlate with
+        # something else. If a whole article's debates all had gold speaking first,
+        # speaking order would track story identity, and story identity is exactly
+        # what the article-level split exists to keep out of the probe.
+        # The flag is a function of (article index, question index) only -- never of
+        # how many questions were drawn. `balanced_flags(k)` would shuffle differently
+        # at k=2 and k=4, silently changing the speaking order of debates that already
+        # exist and forcing them to be regenerated. Strict alternation within an
+        # article, with the starting value alternating across articles, is exactly
+        # balanced for even k, balanced overall for odd k, and stable as k grows.
+        per_article: dict[str, list[QualityQuestion]] = {}
+        for q in group:
+            per_article.setdefault(q.article_id, []).append(q)
+        for j, article_id in enumerate(sorted(per_article)):
+            qs = sorted(per_article[article_id], key=lambda q: q.question_id)
+            specs += [DebateSpec(q, condition, (i + j + offset) % 2 == 0)
+                      for i, q in enumerate(qs)]
     return specs
 
 
