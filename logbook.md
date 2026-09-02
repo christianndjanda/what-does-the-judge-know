@@ -1402,3 +1402,80 @@ significance for a perfect one.
 
 **Cost.** Estimated $40.33 for 528 debates. The estimator ran 27% high last time ($2.95
 against $2.15 actual), so expect ~$29.
+
+### The scaled corpus â€” 525 debates, and two quarantine files that lied
+
+Generated at k=2 over 264 articles from dev+train. **$26.04 for 524 new debates
+($0.0497 each)**, against a $40.33 pre-flight estimate â€” the estimator runs ~35% high,
+consistent with the first run ($2.95 estimated, $2.15 actual).
+
+Final state, all verified before handing to Phase 1:
+
+| | |
+| --- | --- |
+| debates | **525** (528 planned, 3 quarantined as leaks) |
+| articles | 264, two debates each (three have one, after leak removal) |
+| conditions | honest 261, collusion 264 |
+| **articles spanning both conditions** | **0** |
+| questions shared across conditions | 0 |
+| gold letter | 132/132 collusion, 130/131 honest |
+| gold speaks first | 133/264, 131/261 |
+| letter x speaking order | 65-67 in every cell, both conditions |
+| leaks in corpus / empty turns / short debates | 0 / 0 / 0 |
+
+**Two interruptions, both from the same class of mistake: a global fault recorded as
+hundreds of per-debate failures.**
+
+1. *Placeholder API key.* A `$env:ANTHROPIC_API_KEY = "sk-ant-..."` line, copied
+   verbatim from an instruction that should never have included it, set the key to the
+   literal placeholder. All 528 debates failed with 401s and were quarantined. Since
+   `done_ids` counts failures as done so reruns settle, the next run â€” with the correct
+   key â€” reported "0 to go" and did nothing. The resume state had been permanently
+   poisoned by a typo.
+2. *Credit exhaustion at debate 452.* Same shape: every remaining debate failed with a
+   400, 320 of them quarantined.
+
+Fixed both ways round. `build_corpus` now aborts after `FAIL_FAST_THRESHOLD = 5`
+failures with **zero** successes â€” a global fault fails every debate identically,
+whereas genuine per-debate failures do not cluster like that. It correctly did *not*
+fire on the credit exhaustion, where 204 debates had already succeeded. And
+`done_ids(include_failures=False)`, exposed as `--retry-failed`, re-attempts
+quarantined ids once the underlying fault is fixed.
+
+**The quarantine files then lied in the other direction, which is the part worth
+remembering.** After the retry, all 320 credit failures existed as real transcripts â€”
+but `failures.jsonl` still held all 320 entries. Reported naively that is a 38% failure
+rate on a run whose true failure rate is **zero**. The quarantine is append-only by
+design (so rates survive into the writeup), which means a successful retry leaves a
+stale record behind and nothing reconciles them. Checked explicitly: 320/320 failure
+ids are now present as transcripts, 0 genuinely missing. Both stale files archived
+(`failures_auth_401.jsonl.bak`, `failures_credit_400_retried.jsonl.bak`) rather than
+deleted. **Standing note: never quote a rate out of `failures.jsonl` without first
+subtracting the ids that later succeeded.**
+
+The 3 remaining quarantined debates are genuine leaks â€” a debater mentioning the setup,
+which is what `find_leak` exists to catch. That is a real 0.6% leak rate and it does
+belong in the writeup.
+
+**Pruning the old corpus.** The original 40 debates were drawn under `sample_questions`
+(dev only, one random question per article); the scaled corpus uses `sample_by_article`.
+Only 1 of the 40 survives into the new plan, and 26 of the other 39 sat on an article
+the new plan assigns to the **opposite** condition. Keeping them would have put the same
+story in both the probe's training and test sets â€” the exact leakage the article-level
+split exists to prevent, and invisible to every downstream control. `scripts/phase2_prune.py`
+drops out-of-plan transcripts (report-only by default, and it refuses to rewrite a
+corpus file touched in the last 60 seconds, since a concurrent append would corrupt it).
+39 archived to `pruned_transcripts.jsonl`; option letters rebalanced over what remained.
+
+That $2.15 is the cost of having scaled the corpus after building it rather than before.
+Cheap, and worth recording as the reason to settle the sampling design before generating
+anything.
+
+**One residual anomaly, noted not chased:** 1 article of 261 has both its debates on the
+same speaking order. The alternation is deterministic in (article index, question index),
+so this is a boundary effect rather than randomness. Global balance is unaffected
+(133/264, 131/261) and the letter x order table is clean, so it is recorded rather than
+fixed.
+
+Corpus is ready for judging. Next: `phase1_harness.py` on the H100, then `phase2_q0.py`
+to see whether Q0's 0.429 verdict gap survives at 20x the sample size.
