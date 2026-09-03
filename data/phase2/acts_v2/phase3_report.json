@@ -1,0 +1,436 @@
+{
+  "n_test": 23,
+  "n_train": 137,
+  "n_excluded": 23,
+  "layer": 44,
+  "model_layer": 44,
+  "train_acc": 0.9086538461538461,
+  "val_acc": 0.9090909090909091,
+  "probe_correct": 1,
+  "probe_acc": 0.043478260869565216,
+  "probe_ci95": [
+    0.0077164669621267445,
+    0.20991586494059142
+  ],
+  "binomial_p_above_chance": 0.9999998807907104,
+  "binomial_p_below_chance": 2.86102294921875e-06,
+  "probe_agrees_with_judge": 0.9565217391304348,
+  "control_n": 150,
+  "control_n_disagree": 13,
+  "judge_acc": 0.0,
+  "cosine_truth_verdict": 0.9820912480354309,
+  "truth_on_verdict": 0.9066666666666666,
+  "verdict_on_truth": 0.8566666666666667,
+  "layers_above_0.75_val": 24,
+  "sweep": [
+    {
+      "layer": 0,
+      "val_acc": 0.5454545454545454,
+      "train_acc": 0.5721153846153846,
+      "model_layer": 0
+    },
+    {
+      "layer": 1,
+      "val_acc": 0.5606060606060606,
+      "train_acc": 0.5576923076923077,
+      "model_layer": 1
+    },
+    {
+      "layer": 2,
+      "val_acc": 0.5,
+      "train_acc": 0.5769230769230769,
+      "model_layer": 2
+    },
+    {
+      "layer": 3,
+      "val_acc": 0.5909090909090909,
+      "train_acc": 0.5721153846153846,
+      "model_layer": 3
+    },
+    {
+      "layer": 4,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5769230769230769,
+      "model_layer": 4
+    },
+    {
+      "layer": 5,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5961538461538461,
+      "model_layer": 5
+    },
+    {
+      "layer": 6,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5673076923076923,
+      "model_layer": 6
+    },
+    {
+      "layer": 7,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5817307692307693,
+      "model_layer": 7
+    },
+    {
+      "layer": 8,
+      "val_acc": 0.5909090909090909,
+      "train_acc": 0.5769230769230769,
+      "model_layer": 8
+    },
+    {
+      "layer": 9,
+      "val_acc": 0.5909090909090909,
+      "train_acc": 0.5865384615384616,
+      "model_layer": 9
+    },
+    {
+      "layer": 10,
+      "val_acc": 0.5909090909090909,
+      "train_acc": 0.5961538461538461,
+      "model_layer": 10
+    },
+    {
+      "layer": 11,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5913461538461539,
+      "model_layer": 11
+    },
+    {
+      "layer": 12,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.6009615384615384,
+      "model_layer": 12
+    },
+    {
+      "layer": 13,
+      "val_acc": 0.5606060606060606,
+      "train_acc": 0.5961538461538461,
+      "model_layer": 13
+    },
+    {
+      "layer": 14,
+      "val_acc": 0.5606060606060606,
+      "train_acc": 0.6057692307692307,
+      "model_layer": 14
+    },
+    {
+      "layer": 15,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5913461538461539,
+      "model_layer": 15
+    },
+    {
+      "layer": 16,
+      "val_acc": 0.5909090909090909,
+      "train_acc": 0.5913461538461539,
+      "model_layer": 16
+    },
+    {
+      "layer": 17,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5865384615384616,
+      "model_layer": 17
+    },
+    {
+      "layer": 18,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5817307692307693,
+      "model_layer": 18
+    },
+    {
+      "layer": 19,
+      "val_acc": 0.5909090909090909,
+      "train_acc": 0.5769230769230769,
+      "model_layer": 19
+    },
+    {
+      "layer": 20,
+      "val_acc": 0.5606060606060606,
+      "train_acc": 0.5769230769230769,
+      "model_layer": 20
+    },
+    {
+      "layer": 21,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5865384615384616,
+      "model_layer": 21
+    },
+    {
+      "layer": 22,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5961538461538461,
+      "model_layer": 22
+    },
+    {
+      "layer": 23,
+      "val_acc": 0.5757575757575758,
+      "train_acc": 0.5961538461538461,
+      "model_layer": 23
+    },
+    {
+      "layer": 24,
+      "val_acc": 0.6212121212121212,
+      "train_acc": 0.625,
+      "model_layer": 24
+    },
+    {
+      "layer": 25,
+      "val_acc": 0.8181818181818182,
+      "train_acc": 0.7644230769230769,
+      "model_layer": 25
+    },
+    {
+      "layer": 26,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.7884615384615384,
+      "model_layer": 26
+    },
+    {
+      "layer": 27,
+      "val_acc": 0.8333333333333334,
+      "train_acc": 0.8028846153846154,
+      "model_layer": 27
+    },
+    {
+      "layer": 28,
+      "val_acc": 0.8181818181818182,
+      "train_acc": 0.8173076923076923,
+      "model_layer": 28
+    },
+    {
+      "layer": 29,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.8125,
+      "model_layer": 29
+    },
+    {
+      "layer": 30,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.7644230769230769,
+      "model_layer": 30
+    },
+    {
+      "layer": 31,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.7355769230769231,
+      "model_layer": 31
+    },
+    {
+      "layer": 32,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.7451923076923077,
+      "model_layer": 32
+    },
+    {
+      "layer": 33,
+      "val_acc": 0.7878787878787878,
+      "train_acc": 0.7403846153846154,
+      "model_layer": 33
+    },
+    {
+      "layer": 34,
+      "val_acc": 0.7878787878787878,
+      "train_acc": 0.7403846153846154,
+      "model_layer": 34
+    },
+    {
+      "layer": 35,
+      "val_acc": 0.7727272727272727,
+      "train_acc": 0.7451923076923077,
+      "model_layer": 35
+    },
+    {
+      "layer": 36,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 36
+    },
+    {
+      "layer": 37,
+      "val_acc": 0.7878787878787878,
+      "train_acc": 0.7932692307692307,
+      "model_layer": 37
+    },
+    {
+      "layer": 38,
+      "val_acc": 0.8181818181818182,
+      "train_acc": 0.8125,
+      "model_layer": 38
+    },
+    {
+      "layer": 39,
+      "val_acc": 0.7878787878787878,
+      "train_acc": 0.8076923076923077,
+      "model_layer": 39
+    },
+    {
+      "layer": 40,
+      "val_acc": 0.8181818181818182,
+      "train_acc": 0.8461538461538461,
+      "model_layer": 40
+    },
+    {
+      "layer": 41,
+      "val_acc": 0.8636363636363636,
+      "train_acc": 0.9038461538461539,
+      "model_layer": 41
+    },
+    {
+      "layer": 42,
+      "val_acc": 0.8787878787878788,
+      "train_acc": 0.8894230769230769,
+      "model_layer": 42
+    },
+    {
+      "layer": 43,
+      "val_acc": 0.9090909090909091,
+      "train_acc": 0.9086538461538461,
+      "model_layer": 43
+    },
+    {
+      "layer": 44,
+      "val_acc": 0.9090909090909091,
+      "train_acc": 0.9086538461538461,
+      "model_layer": 44
+    },
+    {
+      "layer": 45,
+      "val_acc": 0.8636363636363636,
+      "train_acc": 0.9134615384615384,
+      "model_layer": 45
+    },
+    {
+      "layer": 46,
+      "val_acc": 0.803030303030303,
+      "train_acc": 0.8701923076923077,
+      "model_layer": 46
+    },
+    {
+      "layer": 47,
+      "val_acc": 0.7878787878787878,
+      "train_acc": 0.8653846153846154,
+      "model_layer": 47
+    },
+    {
+      "layer": 48,
+      "val_acc": 0.8181818181818182,
+      "train_acc": 0.8509615384615384,
+      "model_layer": 48
+    },
+    {
+      "layer": 49,
+      "val_acc": 0.7272727272727273,
+      "train_acc": 0.8173076923076923,
+      "model_layer": 49
+    },
+    {
+      "layer": 50,
+      "val_acc": 0.7121212121212122,
+      "train_acc": 0.7980769230769231,
+      "model_layer": 50
+    },
+    {
+      "layer": 51,
+      "val_acc": 0.7121212121212122,
+      "train_acc": 0.7980769230769231,
+      "model_layer": 51
+    },
+    {
+      "layer": 52,
+      "val_acc": 0.696969696969697,
+      "train_acc": 0.7836538461538461,
+      "model_layer": 52
+    },
+    {
+      "layer": 53,
+      "val_acc": 0.7121212121212122,
+      "train_acc": 0.7788461538461539,
+      "model_layer": 53
+    },
+    {
+      "layer": 54,
+      "val_acc": 0.696969696969697,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 54
+    },
+    {
+      "layer": 55,
+      "val_acc": 0.6666666666666666,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 55
+    },
+    {
+      "layer": 56,
+      "val_acc": 0.7424242424242424,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 56
+    },
+    {
+      "layer": 57,
+      "val_acc": 0.7121212121212122,
+      "train_acc": 0.7644230769230769,
+      "model_layer": 57
+    },
+    {
+      "layer": 58,
+      "val_acc": 0.7272727272727273,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 58
+    },
+    {
+      "layer": 59,
+      "val_acc": 0.696969696969697,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 59
+    },
+    {
+      "layer": 60,
+      "val_acc": 0.7121212121212122,
+      "train_acc": 0.7692307692307693,
+      "model_layer": 60
+    },
+    {
+      "layer": 61,
+      "val_acc": 0.7121212121212122,
+      "train_acc": 0.7596153846153846,
+      "model_layer": 61
+    },
+    {
+      "layer": 62,
+      "val_acc": 0.7272727272727273,
+      "train_acc": 0.7788461538461539,
+      "model_layer": 62
+    },
+    {
+      "layer": 63,
+      "val_acc": 0.7272727272727273,
+      "train_acc": 0.7355769230769231,
+      "model_layer": 63
+    }
+  ],
+  "test_ids": [
+    "p2-collusion-20007_5OCOFL2D_2",
+    "p2-collusion-20022_JS19AGNB_1",
+    "p2-collusion-20027_2RUIA5TI_3",
+    "p2-collusion-20041_E0WD00T4_7",
+    "p2-collusion-20044_EBV68EUZ_2",
+    "p2-collusion-20077_1BWEF124_4",
+    "p2-collusion-22524_N885O1MX_1",
+    "p2-collusion-22875_539MKDEK_10",
+    "p2-collusion-23767_EDRV7U74_2",
+    "p2-collusion-24290_66ER3O5Z_1",
+    "p2-collusion-29196_HBX60GQ0_4",
+    "p2-collusion-51256_MZNDC998_1",
+    "p2-collusion-51436_MT3ROY6U_10",
+    "p2-collusion-51651_MQXMFBCV_1",
+    "p2-collusion-51688_5EVPD4SX_1",
+    "p2-collusion-59368_LBNEJQ7W_1",
+    "p2-collusion-60745_RWAY1IZC_10",
+    "p2-collusion-61090_FGU9ZSOF_1",
+    "p2-collusion-61242_4XEEXVB0_2",
+    "p2-collusion-62476_0WTVH8V9_2",
+    "p2-collusion-63401_TBZWTSB7_5",
+    "p2-collusion-63616_AZTRNB8D_2",
+    "p2-collusion-99902_1IHVLLLA_4"
+  ]
+}

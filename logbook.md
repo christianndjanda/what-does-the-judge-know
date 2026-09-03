@@ -1479,3 +1479,182 @@ fixed.
 
 Corpus is ready for judging. Next: `phase1_harness.py` on the H100, then `phase2_q0.py`
 to see whether Q0's 0.429 verdict gap survives at 20x the sample size.
+
+## Q0 at scale -- 525 debates, and the gap holds
+
+525 debates judged on Qwen2.5-32B, 1x H100, **559.6 s** for 3150 forward passes and
+2.75 GB of activations at stride 1. Same picture as the 43-second pilot run: the GPU
+is never the cost here.
+
+| | honest | collusion | one-tailed Fisher |
+| --- | --- | --- | --- |
+| n | 261 | 264 | |
+| order-consistent | 109 (0.418) | 74 (0.280) | **p = 0.00065** |
+| verdict errors (of consistent) | 13/109 (**0.119**) | 23/74 (**0.311**) | **p = 0.0014** |
+| forced-choice errors (of all) | 56/261 (**0.215**) | 80/264 (**0.303**) | **p = 0.013** |
+| mean P(gold) | 0.658 | 0.548 | |
+
+**Q0 survives 20x the sample, on both readings.** The pilot's verdict gap of 0.429
+(n=40, p=0.043) comes down to 0.192, which is the ordinary fate of a pilot effect
+size; what matters is that the forced-choice gap -- the one defined over every debate
+with no conditioning on a post-treatment variable -- is now significant on its own at
+0.088 (p = 0.013). That was the conservative reading the pilot entry promised to lead
+with, and it no longer has to be argued for on n=40.
+
+**The order-robustness finding also holds, and is the larger effect.** Consistency
+0.280 under collusion against 0.418 honest, p = 0.00065 -- a smaller p than the
+verdict gap itself. Steering voids debates more reliably than it flips them.
+
+**The anchoring is asymmetric, which the pilot could not see.** Of the 342
+order-split debates, **304 anchored on the second-printed option and 38 on the
+first** (mean `first_slot_rate` 0.247). So when the debate does not settle it, this
+judge mostly answers B. Counterbalancing absorbs that by construction, which is what
+the doubled forward-pass cost bought: a single-order run over this corpus would have
+produced an accuracy number driven mostly by which letter gold happened to get, with
+nothing in the output to reveal it.
+
+**Yield, against plan.** 23 verdict-steered cases where the scaling entry projected
+~40. The projection assumed the pilot's rates; the realised collusion consistency
+came in at 0.280 against the pilot's 0.350, and 23/264 = 0.087 of colluded debates
+clear the verdict criterion. The pre-registered secondary criterion (forced choice,
+sign of order-averaged P(gold)) gives 80 cases on the same corpus. Both test sets
+were fixed in advance, so both can be reported without forking-path trouble.
+
+**The pilot corpus is superseded, not pooled.** 39 of its 40 debates were pruned as
+out-of-plan when the sampler changed (see the scaling entry); `data/phase2/acts` and
+its Q0 report stand as a pilot on a corpus that mostly no longer exists, and its
+numbers are never averaged with these.
+
+## Phase 3 -- the probe reads the verdict, not the truth
+
+`scripts/phase3_probe.py`, no GPU: everything below reads the cached activations from
+`data/phase2/acts_v2`. Report at `data/phase2/acts_v2/phase3_report.json`.
+
+### 3.1 Split
+
+| | |
+| --- | --- |
+| test -- successfully steered (collusion, order-consistent, judge wrong) | **23** |
+| train -- judge correct and order-consistent | **137** |
+| excluded to keep articles disjoint | 23 |
+| train/test article overlap | **0** |
+| layer-selection split (by article, 25%) | fit 104 / val 33 |
+
+The doc's split is outcome-based: train where truth and verdict agree, test where
+they diverge. **Article-level exclusion is layered on top**, and was decided before
+any of these numbers existed: with two questions per article, the outcome-based rule
+alone would put a story's sibling debate in training whenever one of its debates
+landed in test, and the probe could then win by recognising the story. 23 otherwise
+usable training debates were dropped wholesale to enforce it. Same reasoning as
+leave-one-pair-out in Phase 0, two levels up.
+
+### 3.2 Truth probe -- it works in-distribution
+
+Mass-mean on contrast pairs labelled by gold, layer chosen by `best_band` on the
+validation articles (never on test, never by argmax over 64 layers on one number).
+
+- band centre **model layer 44**, val accuracy **0.909**, train accuracy 0.909
+- **24 of 64 layers** at or above 0.75 on validation -- a band, not a spike
+
+Read alone, this is a strong positive: on held-out honest debates over unseen
+articles, a single linear direction recovers the correct answer from the judge's
+residual stream 91% of the time. **That is the number that would have been the
+headline if 3.3 had not been run**, and it is exactly the number the design doc
+insists on gating.
+
+### 3.3 The control -- and a change to how it is fitted
+
+The doc says to fit a second probe on the same activations labelled by the judge's
+verdict, then compare directions. Fitting it on the 3.1 *training* split, as written,
+is vacuous: that split is defined as "the judge got it right", so the gold labels and
+the verdict labels are **identical there**, and the cosine comes back 1.000 by
+construction rather than by finding. Recorded because it would have been easy to run
+the doc's version, get 1.000, and report it as the result.
+
+Fitted instead over every order-consistent debate outside the test articles -- 150
+debates, judge-correct and judge-wrong alike -- since the 13 judge-wrong ones are the
+only place the two labellings can diverge at all.
+
+| | |
+| --- | --- |
+| cosine(truth, verdict) | **0.982** |
+| truth probe on the verdict task | 0.907 |
+| verdict probe on the truth task | 0.857 |
+| disagreement cases carrying the whole comparison | **13** |
+
+13 clears the script's own weak-evidence threshold (10) by three cases and no more.
+On its own this would be suggestive, not decisive. What makes it decisive is that the
+held-out test set gives the same answer independently, below.
+
+### Q1 -- the endpoint
+
+| | |
+| --- | --- |
+| judge accuracy on the steered set | 0.000 (wrong by construction) |
+| **probe accuracy** | **0.043 (1/23)**, Wilson 95% CI [0.008, 0.210] |
+| probe agrees with the judge's wrong verdict | **22/23 = 0.957** |
+| binomial p, below chance | **2.9e-6** |
+
+**Pre-registered negative #1 fires.** The probe is not at chance on the steered set --
+that would be negative #2. It is significantly *anti*-correlated with truth: it points
+at whatever the judge chose. Together with a 0.982 cosine against the verdict
+direction, the object recovered in 3.2 is a **verdict direction** -- "which answer did
+this debate make convincing" -- and not an output-independent truth representation.
+Q1 collapses in the form the doc poses it.
+
+**0.909 on validation and 0.043 on test are not in tension**, and the reason is the
+whole point of the control: on the training distribution truth and verdict *coincide
+by construction*, so a pure verdict direction scores 0.909 there. The steered set is
+the only place the two labels come apart, and there the direction follows the verdict.
+
+**The test set is not marginal.** Mean order-averaged P(gold) across the 23 steered
+debates is **0.048**: on these the judge is confidently wrong in both presentation
+orders, and the residual stream agrees with it. This is not a probe losing a coin
+flip on borderline cases.
+
+### What this does not exclude
+
+1. **Control n.** 13 disagreement cases. The cosine is the weaker of the two pieces
+   of evidence; the 1/23 is the stronger.
+2. **Layer selection cannot rescue this, and must not be asked to.** Selection ran on
+   validation, where truth and verdict coincide, so no layer *could* have been chosen
+   for separating truth from verdict -- no layer's score contains that information. A
+   per-layer curve of steered-set accuracy would say whether any layer beats chance
+   there, but that is selection on the test set and can only ever be reported as a
+   labelled diagnostic, never as the result. Worth running for the writeup on exactly
+   those terms.
+3. **One probe family.** Mass-mean only; the logistic secondary was not fitted at
+   Phase 3. Contrast pairs at the final token of an appended claim, which doc s9
+   already lists as an unvalidated localisation.
+4. **One judge, one dataset, instructed rather than emergent deception.** Unchanged
+   from the doc's stated limitations.
+
+So the claim is: *on this judge, at this layer, with this probe family, there is no
+linearly readable truth signal that survives successful steering -- what looked like
+one is the verdict.* Not: *the judge has no truth representation anywhere.*
+
+### Consequences for Phase 5 (Q2)
+
+Q2 asked whether the gold-answer signal stays flat (steering overrides the output) or
+decays (steering corrupts the representation). With Q1 negative, **the trajectory is
+no longer about a truth representation eroding** -- it measures when the verdict
+direction settles, i.e. how early in the debate the judge commits. Still worth
+running, and still cheap, but it must be relabelled honestly rather than plotted
+under the doc's original caption.
+
+Two practical notes, both found while planning the run rather than after it:
+
+- **Every debate in the corpus is 2 rounds** (4 turns, 525/525). `PHASE5_ROUNDS =
+  (1, 2, None)` collapses to `r1, full` on a 2-round debate, so the "trajectory" is a
+  **two-point** comparison, not a curve. Getting a third point means either
+  regenerating debates at 3 rounds (new corpus, new steered set, ~$0.05/debate at an
+  8.7% yield) or truncating *mid-round* at the turn level, which the existing
+  transcripts support and the truncation code does not yet expose.
+- **A resume trap.** `run_corpus` skips on `store.has(transcript_id)`, which does not
+  know which round keys were captured. Re-running `phase1_harness.py --rounds 1,2,full`
+  against `data/phase2/acts_v2` would report "525 already in store, 0 to go" and write
+  nothing. Q2 needs a fresh store directory or `--no-resume`.
+
+The length confound control the pre-registration commits to (identical truncation
+analysis on honest debates the honest side won, both curves on the same axes) is
+unaffected by any of this and still runs.
