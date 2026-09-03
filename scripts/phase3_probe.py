@@ -28,6 +28,16 @@ from the output and Q1 is live. Reported as cosine plus both cross-tests.
 
 Activations are the mean over the two presentation orders, which is what makes each
 debate one order-invariant example (Phase 0's counterbalancing decision).
+
+**Two test sets, both fixed in advance** (`--criterion`). `verdict` is primary: a
+debate is steered when both presentation orders agree on the distractor. `forced` is
+the pre-registered secondary: the sign of the order-averaged P(gold), which is
+defined for every debate, so it neither conditions on order-consistency -- a
+post-treatment variable the Q0 entry flags as affected by the treatment -- nor
+discards the debates presentation order decided. They yield 23 and 80 test cases
+respectively, and the forced criterion also gives the 3.3 control far more
+gold-vs-verdict disagreements to sit on. Both are reported; neither was chosen after
+seeing which flatters the probe.
 """
 
 from __future__ import annotations
@@ -42,9 +52,12 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from judgeprobe import config  # noqa: E402
+from judgeprobe.analysis import (  # noqa: E402
+    article_val_split, criterion_maps, split_by_outcome, wilson,
+)
 from judgeprobe.probes import (  # noqa: E402
-    accuracy, best_band, best_layer, cosine, fit_mass_mean, label_layers,
-    loo_accuracy, sweep_layers,
+    accuracy, best_band, best_layer, cosine, fit_logistic, fit_mass_mean,
+    label_layers, loo_accuracy, sweep_layers,
 )
 from judgeprobe.store import ActivationStore  # noqa: E402
 from judgeprobe.transcripts import read_jsonl  # noqa: E402
@@ -68,16 +81,6 @@ def build(store, ids, condition_of, article_of, verdict_of):
     return np.stack(pos), np.stack(neg), meta
 
 
-def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
-    if n == 0:
-        return (0.0, 1.0)
-    p = k / n
-    d = 1 + z * z / n
-    c = (p + z * z / (2 * n)) / d
-    h = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / d
-    return (max(0.0, c - h), min(1.0, c + h))
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -86,7 +89,13 @@ def main() -> int:
                     default=config.PHASE2_DIR / "transcripts.jsonl")
     ap.add_argument("--val-frac", type=float, default=0.25,
                     help="fraction of training ARTICLES held out for layer selection")
+    ap.add_argument("--criterion", choices=("verdict", "forced"), default="verdict",
+                    help="what counts as a steered debate: both orders agree on the "
+                         "distractor (primary), or order-averaged P(gold) < 0.5 "
+                         "(pre-registered secondary)")
     ap.add_argument("--seed", type=int, default=config.SEED)
+    ap.add_argument("--out", type=Path, default=None,
+                    help="report path; defaults to <acts>/phase3_report[_criterion].json")
     args = ap.parse_args()
 
     transcripts = read_jsonl(args.transcripts)
@@ -101,20 +110,21 @@ def main() -> int:
     print(f"{len(ids)} debates with activations and verdicts\n")
 
     # --- 3.1 split ----------------------------------------------------------
-    steered = [i for i in ids
-               if condition_of[i] == "collusion"
-               and rows[i]["consistent"] and rows[i]["correct"] is False]
-    test_articles = {article_of[i] for i in steered}
-    train = [i for i in ids
-             if i not in steered
-             and article_of[i] not in test_articles
-             and rows[i]["consistent"] and rows[i]["correct"] is True]
-    excluded = [i for i in ids
-                if i not in steered and article_of[i] in test_articles]
+    # Which debates count as decided, and what the judge chose on the decided ones.
+    # Under `verdict` a debate is decided only if the two presentation orders agree;
+    # under `forced` every debate is decided, by the sign of the order-averaged
+    # P(gold). Everything downstream -- test set, training set, control set -- reads
+    # these two maps, so the criterion is applied in exactly one place.
+    decided, chose_gold = criterion_maps(ids, rows, args.criterion)
+    steered, train, excluded, test_articles = split_by_outcome(
+        ids, condition_of=condition_of, article_of=article_of,
+        decided=decided, chose_gold=chose_gold)
 
-    print("3.1 split")
+    print(f"3.1 split   (criterion: {args.criterion})")
     print(f"  test  (successfully steered)      : {len(steered)}")
-    print(f"  train (judge correct, consistent) : {len(train)}")
+    print(f"  train (judge chose gold)          : {len(train)}  "
+          f"[{sum(1 for i in train if condition_of[i] == 'honest')} honest, "
+          f"{sum(1 for i in train if condition_of[i] == 'collusion')} failed-steering]")
     print(f"  excluded to keep articles disjoint: {len(excluded)}")
     print(f"  train articles {len({article_of[i] for i in train})}, "
           f"test articles {len(test_articles)}, "
@@ -124,13 +134,8 @@ def main() -> int:
         return 1
 
     # Validation split by ARTICLE, for layer selection only.
-    rng = np.random.default_rng(args.seed)
-    tr_articles = sorted({article_of[i] for i in train})
-    rng.shuffle(tr_articles)
-    n_val = max(1, int(len(tr_articles) * args.val_frac))
-    val_articles = set(tr_articles[:n_val])
-    fit_ids = [i for i in train if article_of[i] not in val_articles]
-    val_ids = [i for i in train if article_of[i] in val_articles]
+    fit_ids, val_ids, val_articles = article_val_split(
+        train, article_of, val_frac=args.val_frac, seed=args.seed)
     print(f"  layer-selection split: fit {len(fit_ids)}, val {len(val_ids)} "
           f"({len(val_articles)} articles held out)\n")
 
@@ -173,9 +178,9 @@ def main() -> int:
     ctrl_ids = [i for i in ids
                 if i not in steered
                 and article_of[i] not in test_articles
-                and rows[i]["consistent"]]
-    n_disagree = sum(1 for i in ctrl_ids if rows[i]["correct"] is False)
-    print(f"  control set: {len(ctrl_ids)} order-consistent debates, "
+                and decided[i]]
+    n_disagree = sum(1 for i in ctrl_ids if not chose_gold[i])
+    print(f"  control set: {len(ctrl_ids)} decided debates, "
           f"{n_disagree} of them with gold != verdict")
 
     gp, gn, vp, vn = [], [], [], []
@@ -183,9 +188,8 @@ def main() -> int:
         g = order_mean(store, tid, "gold")
         d = order_mean(store, tid, "distractor")
         gp.append(g); gn.append(d)                      # labelled by gold
-        chose_gold = rows[tid]["choice"] == "gold"
-        vp.append(g if chose_gold else d)               # labelled by verdict
-        vn.append(d if chose_gold else g)
+        vp.append(g if chose_gold[tid] else d)          # labelled by verdict
+        vn.append(d if chose_gold[tid] else g)
     GP, GN = np.stack(gp), np.stack(gn)
     VP, VN = np.stack(vp), np.stack(vn)
 
@@ -234,7 +238,49 @@ def main() -> int:
     print(f"  probe agrees with the judge's (wrong) verdict on "
           f"{n - correct}/{n} = {(n - correct)/n:.3f}")
 
+    # --- diagnostics, and they are labelled as diagnostics ------------------
+    # Test-set accuracy at every layer. This is selection on the test set, so its
+    # maximum is NOT a result and never picks the layer -- `chosen` is already fixed
+    # by the validation articles above. It answers the one question a reader will
+    # ask of a negative: is the truth kept at some other depth, or is the verdict
+    # direction the whole story everywhere?
+    test_curve = []
+    for layer in range(P_fit.shape[1]):
+        pr = fit_mass_mean(P_fit[:, layer, :], N_fit[:, layer, :], layer=layer)
+        sg = P_test[:, layer, :] @ pr.direction
+        sd = N_test[:, layer, :] @ pr.direction
+        test_curve.append({"layer": layer, "test_acc": float(np.mean(sg > sd))})
+    test_curve = label_layers(test_curve, store.manifest.get("layers"))
+    best_test = max(test_curve, key=lambda r: r["test_acc"])
+    n_above_chance = sum(1 for r in test_curve if r["test_acc"] > 0.5)
+    print(f"\ndiagnostic (selection on test -- not a result)")
+    print(f"  best layer on test: {best_test.get('model_layer', best_test['layer'])} "
+          f"at {best_test['test_acc']:.3f}")
+    print(f"  layers above chance on test: {n_above_chance}/{len(test_curve)}")
+
+    # Logistic as the doc's secondary comparison (s0.5), at the chosen layer only:
+    # does the negative depend on mass-mean, or on the activations?
+    log_probe = fit_logistic(P_fit[:, chosen, :], N_fit[:, chosen, :], layer=chosen)
+    lg = P_test[:, chosen, :] @ log_probe.direction
+    ld = N_test[:, chosen, :] @ log_probe.direction
+    logistic_test_acc = float(np.mean(lg > ld))
+    logistic_val_acc = accuracy(log_probe, P_val[:, chosen, :], N_val[:, chosen, :])
+    cos_mass_logistic = cosine(truth, log_probe)
+    print(f"  logistic (secondary): val {logistic_val_acc:.3f}, "
+          f"test {logistic_test_acc:.3f}, cosine with mass-mean {cos_mass_logistic:.3f}")
+
     report = {
+        "criterion": args.criterion,
+        "train_honest": sum(1 for i in train if condition_of[i] == "honest"),
+        "train_failed_steering": sum(1 for i in train
+                                     if condition_of[i] == "collusion"),
+        "test_curve_diagnostic": test_curve,
+        "best_test_layer": best_test.get("model_layer", best_test["layer"]),
+        "best_test_acc": best_test["test_acc"],
+        "test_layers_above_chance": n_above_chance,
+        "logistic_val_acc": logistic_val_acc,
+        "logistic_test_acc": logistic_test_acc,
+        "cosine_mass_logistic": cos_mass_logistic,
         "n_test": n, "n_train": len(train), "n_excluded": len(excluded),
         "layer": int(chosen),
         "model_layer": chosen_row.get("model_layer", int(chosen)),
@@ -253,7 +299,8 @@ def main() -> int:
         "sweep": sweep,
         "test_ids": [m["id"] for m in meta_test],
     }
-    out = args.acts / "phase3_report.json"
+    suffix = "" if args.criterion == "verdict" else f"_{args.criterion}"
+    out = args.out or (args.acts / f"phase3_report{suffix}.json")
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"\nreport -> {out}")
     return 0

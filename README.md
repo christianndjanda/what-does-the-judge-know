@@ -19,6 +19,7 @@ src/judgeprobe/
   harness.py      the corpus loop: judge -> store, resumable, verdict metrics
   debate.py       Phase 2 debaters: prompts, conditions, leak check, covertness
   corpus.py       Phase 2 runner: plan, parallel generate, quarantine, balance
+  analysis.py     Phases 3-5: what counts as steered, and the article-disjoint split
 scripts/
   check_env.py                 environment check -- run this first on the GH200
   phase0_build_transcripts.py  Phase 0.1: ten throwaway transcripts
@@ -28,6 +29,9 @@ scripts/
   phase1_harness.py            Phase 1: run the harness over a transcript corpus
   phase2_selftest.py           Phase 2: pipeline contracts against a stub client
   phase2_build_corpus.py       Phase 2: generate the debate corpus (API, no GPU)
+  phase2_q0.py                 Q0: the steering rate, per condition
+  phase3_probe.py              Phase 3: truth probe, verdict-probe control, Q1
+  phase5_trajectory.py         Phase 5: Q2 across rounds, with the length control
   setup_lambda.sh              bootstrap a Lambda Labs GPU instance
 ```
 
@@ -96,6 +100,55 @@ the real prompts to `dry_run_prompts.txt`.
 Reruns resume. Debates whose text mentions the setup ("as instructed, I will argue
 weakly") are quarantined to `leaked.jsonl` rather than dropped, and failures to
 `failures.jsonl`, so both rates stay recoverable.
+
+## Running Phases 3 and 5
+
+Both read cached activations, so neither needs a GPU -- but the store they read does
+have to exist. Phase 3 runs off the full-transcript store (`acts_v2`); Phase 5 needs
+the round-truncated one, which is a second judging pass.
+
+```bash
+python scripts/phase3_probe.py --acts data/phase2/acts_v2                     # primary
+python scripts/phase3_probe.py --acts data/phase2/acts_v2 --criterion forced  # secondary
+```
+
+`--criterion` picks the test set, and both were fixed before the numbers existed:
+
+| | steered means | test cases | control disagreements |
+| --- | --- | --- | --- |
+| `verdict` (primary) | both presentation orders agree on the distractor | 23 | 13 |
+| `forced` (secondary) | order-averaged P(gold) < 0.5 | 80 | 56 |
+
+The forced criterion is defined for every debate, so it does not condition on
+order-consistency -- which Q0 showed the treatment itself degrades -- and it gives
+the s3.3 verdict-probe control four times as many gold-vs-verdict disagreements to
+stand on. Reports go to `phase3_report.json` and `phase3_report_forced.json`.
+
+Phase 5 needs round-truncated activations, which is ~20 minutes on the GPU and about
+5.5 GB on disk at stride 1:
+
+```bash
+python scripts/phase1_harness.py --model Qwen/Qwen2.5-32B-Instruct \
+    --transcripts data/phase2/transcripts.jsonl --rounds 1,2,full \
+    --out data/phase2/acts_rounds          # a FRESH directory -- see below
+python scripts/phase5_trajectory.py --acts data/phase2/acts_rounds
+python scripts/phase5_trajectory.py --acts data/phase2/acts_rounds --criterion forced
+```
+
+**Write it to a new directory.** Resume skips on transcript id, not on which round
+keys were captured, so pointing `--rounds 1,2,full` at `acts_v2` reports "525 already
+in store, 0 to go" and writes nothing. `--no-resume` is the other way out.
+
+Every debate in the corpus is 2 rounds, so `1,2,full` collapses to two capture
+points: after round 1, and the whole debate. The trajectory is a two-point comparison
+rather than a curve, and the script says so.
+
+Phase 5 trains one probe on the full transcripts of the training split and applies it
+at each truncation -- the doc is explicit that the probe is not refitted per round.
+It reports margins under two sign conventions: toward gold (Q2 as the doc poses it)
+and toward the answer the judge actually gave (what the direction turned out to
+measure). The pre-registered length-confound control -- the identical analysis on
+held-out honest debates the judge got right -- is on the same axes by construction.
 
 ## Running Phase 0 on Lambda Labs
 

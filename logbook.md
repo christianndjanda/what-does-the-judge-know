@@ -1658,3 +1658,55 @@ Two practical notes, both found while planning the run rather than after it:
 The length confound control the pre-registration commits to (identical truncation
 analysis on honest debates the honest side won, both curves on the same axes) is
 unaffected by any of this and still runs.
+
+### Preparing the remaining runs, and testing them without the data
+
+Everything left needs either the activation store (which lives on the GPU box -- the
+local copy is 187 of ~2100 arrays, one of them truncated mid-write) or a GPU. So the
+code for the remaining runs was written and verified against a **stub store**: the
+real 525 debates and their real verdicts, with 8x16 activations carrying a *planted
+verdict direction* instead of the real 64x5120 ones. Contracts are exercised over the
+real bookkeeping; the numbers are known in advance because we put them there.
+
+Three things built, all no-GPU once the store exists:
+
+1. **`--criterion verdict|forced` in `phase3_probe.py`.** The pre-registered secondary
+   test set was never wired up. On the stub it gives 80 test cases against the
+   primary's 23, and -- the part that matters more -- the s3.3 control set goes from
+   150 debates with **13** gold-vs-verdict disagreements to 373 with **56**. The
+   thinnest number in the Phase 3 report was the 13; this is the honest way to
+   thicken it, because the criterion was fixed in the scaling entry before any of
+   these numbers existed rather than chosen now.
+
+2. **Two diagnostics in the same script.** Test-set accuracy at every layer, printed
+   under a "selection on test -- not a result" heading, because the question a reader
+   will ask of a negative is whether some other depth keeps the truth; and the
+   logistic probe as the doc's s0.5 secondary at the chosen layer, so the negative
+   cannot be pinned on mass-mean.
+
+3. **`scripts/phase5_trajectory.py`**, which did not exist. One probe, fit on the full
+   transcripts of the training split and applied at each truncation (the doc is
+   explicit that it is not refitted per round), plus the pre-registered length control
+   on held-out honest debates.
+
+**The split logic moved to `src/judgeprobe/analysis.py`** so Phases 3 and 5 cannot
+drift into different definitions of "steered". Checked by re-running Phase 3 on the
+stub after the refactor: 23 test / 137 train / 23 excluded / fit 104 / val 33, digit
+for digit what the committed real report says. Phase 1's 24 contracts still pass.
+
+**A sign convention that would have made the length control unreadable.** The
+trajectory first reported the margin toward *gold*. On a steered debate that number is
+negative and grows more negative as the judge commits; on an honest control debate it
+is positive and grows more positive. The same underlying movement therefore printed as
+"falling" in one set and "rising" in the other, and the confound control -- whose whole
+logic is "if both curves move together it is context length, not steering" -- would
+have read a shared effect as an opposing one. Fixed by also reporting the margin
+toward *the answer the judge actually gave*, which is the comparable quantity now that
+Phase 3 has established the direction is the verdict direction. Caught on stub data
+built to contain a pure length effect and nothing else, which is what that stub is
+for.
+
+Order of operations for the GPU session, recorded so it is not re-derived at the
+instance's hourly rate: start the truncation run first (it is the only GPU-bound
+piece, ~20 min unattended, into a **fresh** store directory), run the Phase 3 variants
+on the same box while it works, pull down the report JSONs, stop the instance.
