@@ -1710,3 +1710,128 @@ Order of operations for the GPU session, recorded so it is not re-derived at the
 instance's hourly rate: start the truncation run first (it is the only GPU-bound
 piece, ~20 min unattended, into a **fresh** store directory), run the Phase 3 variants
 on the same box while it works, pull down the report JSONs, stop the instance.
+
+## The full run — replication, the secondary criterion, Q2, and a result that did not survive
+
+Fresh H100 instance, weights re-pulled, **transformers 5.16.1** rather than whatever
+the first judging run used. 525 debates re-judged with truncations, **758 s**, 5.5 GB
+at stride 1, into `data/phase2/acts_rounds`. Everything below is off that one store,
+so Phase 3 and Phase 5 read the same activations.
+
+### The primary result replicates
+
+Independently judged store, different transformers major version, same numbers:
+
+| | first run (`acts_v2`) | this run (`acts_rounds`) |
+| --- | --- | --- |
+| test / train / excluded | 23 / 137 / 23 | 23 / **138** / 23 |
+| layer, val acc | 44, 0.909 | 44, **0.912** |
+| cosine(truth, verdict) | 0.982 | **0.982** |
+| probe on steered set | 1/23 = 0.043 | **1/23 = 0.043** |
+| agrees with the judge's wrong verdict | 22/23 | **22/23** |
+
+One extra training debate is fp16 nondeterminism, not a discrepancy. The chat-template
+worry that prompted the check is closed.
+
+Two things the first run did not have:
+
+- **Logistic secondary** (doc s0.5): val 0.926, test **0.043**, cosine 0.595 with
+  mass-mean. The negative is not a property of the probe family.
+- **Per-layer accuracy on the test set**, as a labelled selection-on-test diagnostic:
+  best of all 64 layers is **0.652** at layer 0, which on n=23 is p = 0.105 and not
+  significant. No depth keeps the truth. The direction is not hiding somewhere else.
+
+### The secondary criterion, and a finding that looked real for twenty minutes
+
+The pre-registered forced-choice criterion gives 80 test cases, and disagreed with the
+primary loudly: probe **49/80 = 0.613**, *above* chance (p = 0.028), agreeing with the
+judge only 38.8% of the time. Where the primary criterion says the probe follows the
+verdict, the secondary says it beats it.
+
+The confidence bins added for exactly this reason localised the disagreement:
+
+| bin, \|P(gold) − 0.5\| | n | probe reads gold |
+| --- | --- | --- |
+| near-tie < 0.05 | 43 | **0.744** (p = 0.001) |
+| leaning 0.05–0.25 | 14 | 0.500 |
+| confident > 0.25 | 23 | 0.435 |
+
+Read straight, that is the project's hypothesis: where the judge was talked into a
+confident wrong answer the residual stream goes with it, but where the judge never
+committed and layout decided the output, the residual stream still leans gold. It is
+also exactly the "genuine knows-versus-says gap on easy items" that the Phase 0 Gate C
+ceiling entry flagged as *worth a clean experiment if time allows*.
+
+**It did not survive the clean experiment.** Two flaws in reading it off that table,
+both fixable: the bins come from different probes (the forced run selects layer 47 at
+val 0.810; the primary selects 44 at val 0.912), and the near-tie bin is conditioned on
+P(gold) falling *below* 0.5 — which, among debates clustered at 0.5, selects half a
+cluster on noise. `scripts/phase3_crosstest.py` removes both: one probe (the primary),
+and **every** order-split debate whichever side of 0.5 it landed, articles disjoint
+from the probe's training set.
+
+| set | n | probe | judge (forced choice) | gap |
+| --- | --- | --- | --- | --- |
+| all order-split | 228 | 0.667 | 0.706 | **−0.039** |
+| collusion | 138 | 0.659 | 0.725 | −0.065 |
+| honest | 90 | 0.678 | 0.678 | 0.000 |
+| near-ties (<0.05) | 199 | **0.653** | 0.709 | **−0.055** |
+| anchor: confident steered | 23 | 0.043 | 0.000 | +0.043 |
+
+The 0.744 becomes **0.653**, and — the number that matters — it sits *below* the
+judge's own forced-choice accuracy on the same debates. The probe is above chance
+there, but it carries no information the judge's logits do not already have. **There
+is no knows-versus-says gap.**
+
+The mechanism is regression to the mean, and it is worth naming because it will
+recur: the probe and P(gold) are two noisy readings of the same underlying quantity.
+Selecting the debates where one reading fell just below a threshold selects cases
+where its noise ran low, so the other reading reverts upward. Nothing about truth
+representation is needed to produce 0.744.
+
+**Third time this project has had a result deleted by removing a confound** — Gate C's
+speaking-order artifact (1.00 → 0.60), the covertness classifier across six variants,
+and now this. The pattern is the same each time: the effect appears in the number that
+was easiest to compute, and disappears in the one that took a script.
+
+A baseline error the stub caught before the real data did: the judge's forced-choice
+accuracy on order-split debates is **not** chance. It is 0.71 — the soft readout keeps
+signal even where the hard verdict flips with layout. Had the comparison been probe
+against 0.5, the −0.039 gap would have been written up as a +0.167 win.
+
+### Q2 — override, formed by round 1, and not a length effect
+
+Both criteria, both arms, r1 against full (every debate is 2 rounds, so this is two
+points):
+
+| | r1 | full | movement |
+| --- | --- | --- | --- |
+| steered (verdict criterion, n=23) | 14.18 | 13.95 | −0.24, flat |
+| control: held-out honest, judge right (n=24) | 24.73 | 25.93 | +1.20, flat |
+
+Margins are toward the answer the judge gave. **Flat on both arms**, with the control
+flat too, so the pre-registered length confound is ruled out rather than assumed away.
+
+The reading: **override, not corruption, and the override is already complete after
+round 1.** The second round of a colluded debate adds nothing the judge's residual
+stream registers. On the doc's original three-way reading this is "flat and high,
+wrong verdict" — except that Phase 3 established the flat, high thing is the verdict
+direction, so the honest caption is *when the judge commits*, not *what it knows*.
+
+One number worth keeping: the steered arm commits at 14.2 against the honest control's
+24.7. Steering wins the verdict but leaves the judge less committed than an honest
+debate does — the same shape as Q0's order-consistency finding, in a different
+measurement.
+
+The forced-criterion version of the same plot is uninformative by construction: its
+test set is mostly near-ties, so its steered margins sit near zero (−1.6 → −3.2) while
+the control sits at +34. That is the near-tie composition showing up again, not a
+different result.
+
+### Where the project ends
+
+Q0 positive at n=525 on both readings. Q1 negative, replicated, robust to probe family
+and to layer, and the one route by which it might have been partially rescued has been
+checked and closed. Q2 flat on both arms with the length control flat as well.
+Pre-registered negative #1 is the result, and it was pre-registered before any of it
+was seen.
