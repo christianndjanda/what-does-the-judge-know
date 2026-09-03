@@ -238,6 +238,34 @@ def main() -> int:
     print(f"  probe agrees with the judge's (wrong) verdict on "
           f"{n - correct}/{n} = {(n - correct)/n:.3f}")
 
+    # --- does the probe track how hard the judge committed? -----------------
+    # A prediction of the 3.3 result, not a search: if the direction is the verdict
+    # direction, the probe should follow the judge where the judge actually committed
+    # and sit near chance where it did not. `forced` in particular sweeps in a lot of
+    # near-ties -- an order-anchored debate scores ~1 in one presentation and ~0 in
+    # the other, so its average lands on 0.5 and the criterion decides it by a hair.
+    # Bins are fixed here rather than tuned: |P(gold) - 0.5| under 0.05 is a coin
+    # flip, over 0.25 is a confident judge, the rest is in between.
+    edges = [(0.0, 0.05, "near-tie"), (0.05, 0.25, "leaning"), (0.25, 0.51, "confident")]
+    confidence = []
+    for lo_e, hi_e, name in edges:
+        idx = [j for j, m in enumerate(meta_test)
+               if lo_e <= abs(rows[m["id"]]["p_gold"] - 0.5) < hi_e]
+        if not idx:
+            continue
+        k = int(np.sum(scores_gold[idx] > scores_dist[idx]))
+        confidence.append({"bin": name, "lo": lo_e, "hi": hi_e, "n": len(idx),
+                           "probe_acc": k / len(idx),
+                           "agrees_with_judge": (len(idx) - k) / len(idx)})
+    print("\nprobe accuracy by how hard the judge committed (|P(gold) - 0.5|)")
+    for c in confidence:
+        print(f"  {c['bin']:10s} [{c['lo']:.2f},{c['hi']:.2f})  n={c['n']:3d}  "
+              f"probe acc {c['probe_acc']:.3f}  "
+              f"agrees with judge {c['agrees_with_judge']:.3f}")
+    print("  Following the judge more closely where the judge was more certain is "
+          "what a verdict direction predicts; a truth representation has no reason "
+          "to care how confident the wrong answer was.")
+
     # --- diagnostics, and they are labelled as diagnostics ------------------
     # Test-set accuracy at every layer. This is selection on the test set, so its
     # maximum is NOT a result and never picks the layer -- `chosen` is already fixed
@@ -275,6 +303,7 @@ def main() -> int:
         "train_failed_steering": sum(1 for i in train
                                      if condition_of[i] == "collusion"),
         "test_curve_diagnostic": test_curve,
+        "accuracy_by_judge_confidence": confidence,
         "best_test_layer": best_test.get("model_layer", best_test["layer"]),
         "best_test_acc": best_test["test_acc"],
         "test_layers_above_chance": n_above_chance,
