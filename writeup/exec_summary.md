@@ -45,13 +45,19 @@ binomial for a single accuracy against chance.
 
 ![Q0: covert collusion raises the judge's error rate, and more reliably destroys its verdict entirely](../figures/fig1_q0.png)
 
-**Q0: the attack works, mostly by voiding the debate.** Two debaters covertly
-arguing for the same wrong answer raise the judge's verdict error rate from 0.118
-to 0.311 (p = 0.0013) and its forced-choice error rate from 0.215 to 0.303
-(p = 0.013). Unexpectedly, the larger effect is that steering destroys the verdict
-more reliably than it flips it: order-consistency, meaning both presentation orders
-agree, falls from 0.421 to 0.280 (p = 0.00048). A colluded debate that leaves the
-judge nothing decisive pushes it back onto position bias.
+**Q0: can two debaters covertly steer this judge?**
+
+**Yes — but the main effect is not the one I expected.** Two debaters covertly
+arguing for the same wrong answer raise the judge's verdict error rate from 0.118 to
+0.311 (p = 0.0013), and its forced-choice error rate from 0.215 to 0.303
+(p = 0.013). The attack works, so Q1 has a test set.
+
+The larger effect is that steering **destroys** verdicts rather than flipping them.
+Order-consistency — the share of debates where both presentation orders agree on an
+answer — falls from 0.421 to 0.280 (p = 0.00048), a wider gap and a smaller p than
+either error rate. A colluded debate that leaves the judge nothing decisive does not
+move it to the wrong answer; it pushes it back onto position bias, and the debate
+stops having a verdict at all.
 
 ![Q1: 91% where truth and verdict agree, below chance where they come apart](../figures/fig2_q1.png)
 
@@ -89,12 +95,24 @@ Regression to the mean, not a truth signal.
 
 ![Q2: flat on both arms, so the override is complete by round 1 and it is not context length](../figures/fig4_q2.png)
 
-**Q2: the override is complete after round one.** Margins toward the answer
-the judge gave, at round 1 and at the full debate: steered 14.18 to 13.95, control
-24.73 to 25.93. Flat on both arms, so the pre-registered length confound is ruled
-out rather than assumed. The second round adds nothing the residual stream
-registers. Steering wins the verdict but leaves the judge far less committed than an
-honest debate.
+**Q2: when does the judge commit, and is the flat result just context length?**
+
+**By the end of round 1, and no.** The probe margin toward the answer the judge gave
+barely moves between round 1 and the full debate: steered 14.18 to 13.95, control
+24.73 to 25.93. The second round of a colluded debate adds nothing the residual
+stream registers — the override is already complete when it begins.
+
+Flat on *both* arms is what rules out the alternative. The pre-registered length
+control is held-out honest debates the judge got right, on the same axes; if longer
+context moved probe scores on its own, both curves would drift together. Neither
+does, so the confound is ruled out rather than assumed away. One number worth
+keeping: the steered arm commits at 14.2 against the honest control's 24.7 — steering
+wins the verdict but leaves the judge markedly less committed than an honest debate
+does, which is Q0's order-consistency finding showing up in a second measurement.
+
+Q2 as originally posed asked whether a *truth* signal decays across rounds. With Q1
+negative, the honest caption is when the verdict direction settles, and it is
+reported under that one rather than the one I planned.
 
 **Limitations.** One judge, one dataset, instructed rather than emergent deception. The
 primary test set is 23 debates. No causal intervention on the direction. An audit
