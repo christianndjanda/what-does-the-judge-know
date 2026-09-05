@@ -32,6 +32,7 @@ scripts/
   phase2_q0.py                 Q0: the steering rate, per condition
   phase3_probe.py              Phase 3: truth probe, verdict-probe control, Q1
   phase5_trajectory.py         Phase 5: Q2 across rounds, with the length control
+  sample_qualitative.py        write-up: seeded random examples + setup-leak audit
   setup_lambda.sh              bootstrap a Lambda Labs GPU instance
 ```
 
@@ -151,6 +152,16 @@ the real prompts to `dry_run_prompts.txt`.
 Reruns resume. Debates whose text mentions the setup ("as instructed, I will argue
 weakly") are quarantined to `leaked.jsonl` rather than dropped, and failures to
 `failures.jsonl`, so both rates stay recoverable.
+
+**The gate under-catches, and the corpus was not re-filtered.** `find_leak`'s
+`\bi (?:was|am) (?:told|assigned)\b` needs a literal space, so it passes `I'm assigned
+to argue X` and `my assigned answer`. Quarantined: 3 debates (0.6%). Audited including
+those forms: **20 of 525 (3.8%; 17 honest, 3 collusion)**. None is in the 23-debate
+steered test set, one is in the 24-debate Phase 5 control arm, and dropping all 20
+moves Q0's verdict gap +0.193 → +0.189 and its forced-choice gap +0.088 → +0.081. The
+gate is left as-is so the corpus keeps the composition the committed results were
+computed on; `sample_qualitative.py` audits and annotates instead. Widen it before
+regenerating a corpus.
 
 ## Running Phases 3 and 5
 
