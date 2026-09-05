@@ -45,7 +45,7 @@ binomial for a single accuracy against chance.
 
 **Q0: Can two debaters covertly steer this judge?**
 
-![Q0: Can two debaters covertly steer this judge?](../figures/fig1_q0.png)
+![Q0: Yes — and steering destroys verdicts more often than it flips them](../figures/fig1_q0.png)
 
 **Yes — but the main effect is not the one I expected.** Two debaters covertly
 arguing for the same wrong answer raise the judge's verdict error rate from 0.118 to
@@ -61,7 +61,7 @@ stops having a verdict at all.
 
 **Q1: When steering succeeds, does the judge still encode the right answer?**
 
-![Q1: When steering succeeds, does the judge still encode the right answer?](../figures/fig2_q1.png)
+![Q1: No — the direction that reads 91% on held-out data is the verdict, not the truth](../figures/fig2_q1.png)
 
 **No — and what is there instead is the finding.** The direction that looks like a
 truth detector is a verdict detector: it encodes the answer the judge is about to
@@ -97,7 +97,7 @@ Regression to the mean, not a truth signal.
 
 **Q2: When does the judge commit, and is the flat result just context length?**
 
-![Q2: When does the judge commit, and is the flat result just context length?](../figures/fig4_q2.png)
+![Q2: By the end of round 1 — and flat on both arms rules out context length](../figures/fig4_q2.png)
 
 **By the end of round 1, and no.** The probe margin toward the answer the judge gave
 barely moves between round 1 and the full debate: steered 14.18 to 13.95, control

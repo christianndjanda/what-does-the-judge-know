@@ -178,7 +178,7 @@ def fig_q0(verdicts: list[dict], out: Path, dpi: int) -> None:
     ax.legend(frameon=False, loc="upper right", ncols=2)
     ax.grid(axis="y", alpha=0.25, zorder=0)
     finish(fig, ax, out, dpi,
-           "Q0: Can two debaters covertly steer this judge?",
+           "Q0: Yes — and steering destroys verdicts more often than it flips them",
            f"Qwen2.5-32B-Instruct judge, {h['n']} honest vs {c['n']} colluded "
            "QuALITY debates, every debate judged in both presentation orders. "
            "Order-consistency is the share where the two orders agree on an answer; "
@@ -223,7 +223,8 @@ def fig_q1(p3: dict, out: Path, dpi: int) -> None:
     ax.set_ylim(0, 1.20)
     ax.grid(axis="y", alpha=0.25, zorder=0)
     finish(fig, ax, out, dpi,
-           "Q1: When steering succeeds, does the judge still encode the right answer?",
+           "Q1: No — the direction that reads 91% on held-out data is the verdict, "
+           "not the truth",
            f"Mass-mean probe at model layer {p3['model_layer']}, layer selected on "
            "held-out articles. The two numbers are not in tension: on the training "
            "distribution truth and verdict coincide by construction, so a pure "
@@ -326,7 +327,7 @@ def fig_q2(p5: dict, out: Path, dpi: int) -> None:
     ax.legend(frameon=False, loc="upper center", ncols=1)
     ax.grid(axis="y", alpha=0.25, zorder=0)
     finish(fig, ax, out, dpi,
-           "Q2: When does the judge commit, and is the flat result just context length?",
+           "Q2: By the end of round 1 — and flat on both arms rules out context length",
            f"One probe, model layer {p5['model_layer']}, fit on the full transcripts "
            "of the training split and applied at each truncation -- not refitted per "
            "round. Margins are toward the answer the judge actually gave, so both "
