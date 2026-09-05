@@ -1499,6 +1499,19 @@ is never the cost here.
 | forced-choice errors (of all) | 56/261 (**0.215**) | 80/264 (**0.303**) | **p = 0.013** |
 | mean P(gold) | 0.658 | 0.548 | |
 
+> **This table is off `data/phase2/acts_v2`. The writeup quotes `acts_rounds`.**
+> The second judging run differs by exactly one debate: an honest debate that was
+> order-inconsistent here is order-consistent there, which is the same fp16
+> nondeterminism recorded below for the Phase 3 training split (137 → 138). It moves
+> honest order-consistency to 110/261 (0.421), the honest verdict error rate to
+> 13/110 (0.118), and the two Fisher p-values to 0.00048 and 0.0013. The collusion
+> column, both forced-choice rows and every conclusion are identical.
+>
+> Phases 3 and 5 both read `acts_rounds`, so the writeup and `scripts/make_figures.py`
+> quote Q0 from there: four figures drawn off two different judging runs is a
+> discrepancy a reader would find and could not unsee. This table stays as the run
+> that produced it.
+
 **Q0 survives 20x the sample, on both readings.** The pilot's verdict gap of 0.429
 (n=40, p=0.043) comes down to 0.192, which is the ordinary fate of a pilot effect
 size; what matters is that the forced-choice gap -- the one defined over every debate
