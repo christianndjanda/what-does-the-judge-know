@@ -55,15 +55,26 @@ judge nothing decisive pushes it back onto position bias.
 
 ![Q1: 91% where truth and verdict agree, below chance where they come apart](../figures/fig2_q1.png)
 
-**Q1: the probe reads the verdict.** A mass-mean probe trained on debates the
-judge got right, layer chosen on held-out articles, reaches 0.912 validation
-accuracy at layer 44; 24 of 64 layers clear 0.75, so this is a band, not a spike.
-On the 23 debates where steering succeeded it gets one right (binomial p below
-chance = 2.9e-6) and agrees with the judge's wrong verdict 22 times. Its cosine
-with a probe trained on the verdict instead of the truth is 0.982. The two numbers
-are not in tension: on the training distribution truth and verdict coincide by
-construction, so a pure verdict direction scores 0.912 there. The steered set is the
-only place the two labels come apart.
+**Q1: when steering succeeds, does the judge still encode the right answer?**
+
+**No — and what is there instead is the finding.** The direction that looks like a
+truth detector is a verdict detector: it encodes the answer the judge is about to
+give, not the answer that is correct.
+
+A mass-mean probe trained on debates the judge got right, layer chosen on held-out
+articles, reaches **0.912** validation accuracy at layer 44 — and 24 of 64 layers
+clear 0.75, so this is a band, not a spike. On the 23 debates where steering
+succeeded, it gets **one** right, and matches the judge's wrong answer on the other
+22. Binomial p below chance = 2.9e-6: on the debates that matter it is not merely
+uninformative, it is anti-correlated with the truth. Its cosine with a probe trained
+directly on the judge's verdict is **0.982** — the same direction.
+
+The two accuracies are consistent, and that is the whole point. On the training
+distribution truth and verdict coincide by construction, so a direction encoding
+nothing but *what will this judge say* scores 0.912 there. The steered set is the
+only place the two labels separate, and there it follows the verdict. A probe
+validated the obvious way looks like a working audit tool and is not one: it agrees
+with the judge exactly when you would need it to disagree.
 
 ![The result I deleted: the near-tie effect was regression to the mean](../figures/fig3_killed.png)
 
