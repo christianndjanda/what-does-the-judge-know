@@ -1,0 +1,167 @@
+{
+  "model": "HuggingFaceTB/SmolLM2-135M-Instruct",
+  "device": "cpu",
+  "stride": 4,
+  "n_transcripts": 3,
+  "rounds": [
+    "r1",
+    "full"
+  ],
+  "checks": [
+    {
+      "contract": "C2",
+      "name": "cached layers are every Nth",
+      "pass": true,
+      "detail": "stride 4: 9/30 layers"
+    },
+    {
+      "contract": "C2",
+      "name": "final layer always kept",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C2",
+      "name": "swept rows map back to model layers",
+      "pass": true,
+      "detail": "row 1 -> layer 4"
+    },
+    {
+      "contract": "C3",
+      "name": "test transcript has more than one round",
+      "pass": true,
+      "detail": "2 rounds"
+    },
+    {
+      "contract": "C3",
+      "name": "a shorter truncation is a shorter prompt",
+      "pass": true,
+      "detail": "r1 211 < full 339 tokens"
+    },
+    {
+      "contract": "C3",
+      "name": "cutting at the last round == the full transcript",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C3",
+      "name": "round-1 prompt omits later rounds",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C3",
+      "name": "cutoffs past the end collapse into one capture",
+      "pass": true,
+      "detail": "(1, 2, None) on a 2-round debate -> [1, None]"
+    },
+    {
+      "contract": "C1",
+      "name": "output carries the judge's model id",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C1",
+      "name": "verdict and activations are for the same transcript",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C1",
+      "name": "verdict layout matches the contrast prompts",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C1",
+      "name": "each contrast prompt extends the verdict prompt",
+      "pass": true,
+      "detail": "same context; they differ only in the appended answer"
+    },
+    {
+      "contract": "C1",
+      "name": "both presentation orders captured, at every round",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C1",
+      "name": "shape is (n_cached_layers, d_model)",
+      "pass": true,
+      "detail": "{(9, 576)}"
+    },
+    {
+      "contract": "C1",
+      "name": "one array per round x order x class",
+      "pass": true,
+      "detail": "8 arrays for rounds ['r1', 'full']"
+    },
+    {
+      "contract": "C1",
+      "name": "all finite",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C1",
+      "name": "gold and distractor differ",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C1",
+      "name": "a truncation differs from the full transcript",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C4",
+      "name": "every transcript written",
+      "pass": true,
+      "detail": "3 items, 0.50 MB"
+    },
+    {
+      "contract": "C4",
+      "name": "the run report is JSON-serialisable",
+      "pass": true,
+      "detail": "no arrays leak out of the loop"
+    },
+    {
+      "contract": "C4",
+      "name": "load_stacked returns (n, n_layers, d_model)",
+      "pass": true,
+      "detail": "(3, 9, 576)"
+    },
+    {
+      "contract": "C4",
+      "name": "the round trip is exact",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C4",
+      "name": "a rerun resumes rather than recomputes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "contract": "C4",
+      "name": "verdict metrics recompute from the manifest alone",
+      "pass": true,
+      "detail": "{\"n\": 3, \"parse_rate\": 1.0, \"consistency_rate\": 0.0, \"n_consistent\": 0, \"accuracy\": null, \"forced_accuracy\": 0.3333333333333333, \"mean_p_gold\": 0.49999331558744115, \"mean_first_slot_rate\": 1.0}"
+    }
+  ],
+  "pass": true,
+  "verdicts": {
+    "n": 3,
+    "parse_rate": 1.0,
+    "consistency_rate": 0.0,
+    "n_consistent": 0,
+    "accuracy": null,
+    "forced_accuracy": 0.3333333333333333,
+    "mean_p_gold": 0.49999331558744115,
+    "mean_first_slot_rate": 1.0
+  }
+}

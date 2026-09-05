@@ -24,10 +24,25 @@ data/phase0/*
 data/phase0/archive/*
 !data/phase0/archive/*.json
 !data/phase0/archive/*.md
+!data/phase1/
+data/phase1/*
+!data/phase1/*.json
 !data/phase2/
 data/phase2/*
 !data/phase2/*.json
 !data/phase2/*.jsonl
+# Per-run subdirectories (acts/, acts_v2/, acts_rounds/) hold the reports AND the
+# per-debate verdict records; only the activation caches are large. The rules above
+# reach one level only, so these files had to be force-added one at a time -- which is
+# exactly how acts_rounds/verdicts.json ended up untracked while every sibling in the
+# same directory was committed, silently breaking reproduction from a fresh clone.
+# Re-include the directories, then their JSON; *.npy below still wins over both.
+!data/phase2/*/
+data/phase2/*/*
+!data/phase2/*/*.json
+!data/phase2/*/*.jsonl
+# A throwaway CPU smoke run. Not evidence, and not worth the noise.
+data/phase2/acts_cpu_smoke/
 logs/
 out/
 
