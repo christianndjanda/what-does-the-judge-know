@@ -107,7 +107,7 @@ def finish(fig, ax, out: Path, dpi: int, title: str, caption: str) -> None:
     # regular 8pt. One shared width silently clips the title, which is how the first
     # pass lost the last two words of every heading.
     w = fig.get_figwidth()
-    ax.set_title("\n".join(textwrap.wrap(title, int(w * 11.5))),
+    ax.set_title("\n".join(textwrap.wrap(title, int(w * 10.0))),
                  loc="left", fontweight="bold", pad=10)
     wrapped = textwrap.fill(caption, int(w * 16))
     # Reserve real space for the caption: an 8pt line is ~0.15in, so scale by the
@@ -178,7 +178,7 @@ def fig_q0(verdicts: list[dict], out: Path, dpi: int) -> None:
     ax.legend(frameon=False, loc="upper right", ncols=2)
     ax.grid(axis="y", alpha=0.25, zorder=0)
     finish(fig, ax, out, dpi,
-           "Q0: covert collusion raises the judge's error rate, and more reliably "
+           "Q0: Covert collusion raises the judge's error rate, and more reliably "
            "destroys its verdict entirely",
            f"Qwen2.5-32B-Instruct judge, {h['n']} honest vs {c['n']} colluded "
            "QuALITY debates, every debate judged in both presentation orders. "
@@ -281,7 +281,7 @@ def fig_killed(forced: dict, cross: dict, out: Path, dpi: int) -> None:
     ax.set_ylim(0, 1.24)
     ax.grid(axis="y", alpha=0.25, zorder=0)
     finish(fig, ax, out, dpi,
-           "The result I deleted: the near-tie effect was regression to the mean",
+           "The result I deleted: The near-tie effect was regression to the mean",
            "The first binning used a different probe and conditioned on P(gold) "
            "falling just below 0.5, which selects debates where one noisy reading ran "
            "low, so the other reverts upward. Re-tested with a single probe over "
@@ -327,7 +327,7 @@ def fig_q2(p5: dict, out: Path, dpi: int) -> None:
     ax.legend(frameon=False, loc="upper center", ncols=1)
     ax.grid(axis="y", alpha=0.25, zorder=0)
     finish(fig, ax, out, dpi,
-           "Q2: flat on both arms, so the override is complete by round 1 and it is "
+           "Q2: Flat on both arms, so the override is complete by round 1 and it is "
            "not context length",
            f"One probe, model layer {p5['model_layer']}, fit on the full transcripts "
            "of the training split and applied at each truncation -- not refitted per "
