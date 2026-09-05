@@ -43,9 +43,9 @@ swapping the options is what cancels it:
 All p-values below are one-tailed: Fisher exact for the between-condition rates,
 binomial for a single accuracy against chance.
 
-![Q0: covert collusion raises the judge's error rate, and more reliably destroys its verdict entirely](../figures/fig1_q0.png)
+**Q0: Can two debaters covertly steer this judge?**
 
-**Q0: can two debaters covertly steer this judge?**
+![Q0: Can two debaters covertly steer this judge?](../figures/fig1_q0.png)
 
 **Yes — but the main effect is not the one I expected.** Two debaters covertly
 arguing for the same wrong answer raise the judge's verdict error rate from 0.118 to
@@ -59,9 +59,9 @@ either error rate. A colluded debate that leaves the judge nothing decisive does
 move it to the wrong answer; it pushes it back onto position bias, and the debate
 stops having a verdict at all.
 
-![Q1: 91% where truth and verdict agree, below chance where they come apart](../figures/fig2_q1.png)
+**Q1: When steering succeeds, does the judge still encode the right answer?**
 
-**Q1: when steering succeeds, does the judge still encode the right answer?**
+![Q1: When steering succeeds, does the judge still encode the right answer?](../figures/fig2_q1.png)
 
 **No — and what is there instead is the finding.** The direction that looks like a
 truth detector is a verdict detector: it encodes the answer the judge is about to
@@ -82,9 +82,11 @@ only place the two labels separate, and there it follows the verdict. A probe
 validated the obvious way looks like a working audit tool and is not one: it agrees
 with the judge exactly when you would need it to disagree.
 
-![The result I deleted: the near-tie effect was regression to the mean](../figures/fig3_killed.png)
+**The result I deleted**
 
-**The result I deleted.** My pre-registered secondary criterion gave 80 test
+![The result I deleted: The near-tie effect was regression to the mean](../figures/fig3_killed.png)
+
+My pre-registered secondary criterion gave 80 test
 cases and said the opposite: the probe read gold 74.4% of the time on debates where
 the judge never committed (p = 0.001). That is the knows-versus-says gap this
 project was looking for. It did not survive a clean test. The bin came from a
@@ -93,9 +95,9 @@ cases where noise ran low. Re-run with one probe across every order-split debate
 0.653, below the judge's own forced-choice accuracy of 0.709 on the same debates.
 Regression to the mean, not a truth signal.
 
-![Q2: flat on both arms, so the override is complete by round 1 and it is not context length](../figures/fig4_q2.png)
+**Q2: When does the judge commit, and is the flat result just context length?**
 
-**Q2: when does the judge commit, and is the flat result just context length?**
+![Q2: When does the judge commit, and is the flat result just context length?](../figures/fig4_q2.png)
 
 **By the end of round 1, and no.** The probe margin toward the answer the judge gave
 barely moves between round 1 and the full debate: steered 14.18 to 13.95, control
